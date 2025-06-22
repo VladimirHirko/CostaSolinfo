@@ -1,0 +1,20 @@
+/* ========== ГЛОБАЛЬНЫЕ СТИЛИ ========== */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: #fff;
+  color: #222;
+}
+
+/* ========== Общая обёртка ========== */
+.app-wrapper {
+  padding: 20px;
+  font-family: 'Arial', sans-serif;
+  background-color: #fff;
+  color: #222;
+}
+
+/* ========== Контент страницы ========== */
+.page {
+  padding: 10px 0;
+}

@@ -1,0 +1,134 @@
+/* === Основной контейнер навигации === */
+.navbar {
+  background-color: #f8f9fa;
+  padding: 10px 20px;
+  border-bottom: 1px solid #ddd;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Контейнер для логотипа, меню и языка */
+.navbar-brand {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  flex-wrap: wrap;
+}
+
+/* Левая часть: логотип */
+.brand-logo {
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Правая часть: бургер + язык */
+.navbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Бургер-меню */
+.burger {
+  font-size: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: none;
+}
+
+/* Языковой блок */
+.lang-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Селектор языка */
+.lang-selector {
+  padding: 4px 6px;
+  font-weight: bold;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+}
+
+/* Ссылки меню */
+.navbar-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 10px auto 0;
+  max-width: 1200px;
+  padding: 0 16px;
+}
+
+.navbar-links a {
+  text-decoration: none;
+  color: #333;
+  font-weight: 500;
+}
+
+.navbar-links a:hover {
+  color: #007bff;
+}
+
+.navbar-links .active {
+  color: #007bff;
+  text-decoration: underline;
+}
+
+/* === Адаптивность === */
+@media (max-width: 768px) {
+  .burger {
+    display: block;
+  }
+
+  .navbar-brand {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .navbar-controls {
+    flex-direction: column;
+    align-items: flex-end;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .navbar-links {
+    flex-direction: column;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+    width: 100%;
+  }
+
+  .navbar-links.active {
+    max-height: 500px;
+    margin-top: 10px;
+  }
+
+  .navbar-links a {
+    padding: 8px 0;
+    opacity: 0;
+    transform: translateY(-10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+
+  .navbar-links.active a {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .navbar-links.active a:nth-child(1) { transition-delay: 0.05s; }
+  .navbar-links.active a:nth-child(2) { transition-delay: 0.10s; }
+  .navbar-links.active a:nth-child(3) { transition-delay: 0.15s; }
+  .navbar-links.active a:nth-child(4) { transition-delay: 0.20s; }
+  .navbar-links.active a:nth-child(5) { transition-delay: 0.25s; }
+  .navbar-links.active a:nth-child(6) { transition-delay: 0.30s; }
+  .navbar-links.active a:nth-child(7) { transition-delay: 0.35s; }
+}
