@@ -37,6 +37,14 @@
   }
 }
 
+/* Общие стили контейнера и контента */
+.page-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+
 /* Баннер главной страницы */
 .homepage-banner {
   width: 100%;
@@ -54,4 +62,19 @@
   }
 }
 
+/* Стили баннеров на всех страницах */
+.page-banner {
+  width: 100%;
+  max-width: 1200px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
 
+@media (max-width: 768px) {
+  .page-banner {
+    max-width: 95%;
+  }
+}

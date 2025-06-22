@@ -1,0 +1,11 @@
+/* Центрирование и ограничение ширины формы */
+#grp-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Увеличим высоту карты, если понадобится */
+#map {
+    height: 500px !important;
+}

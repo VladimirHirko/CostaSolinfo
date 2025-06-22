@@ -1,0 +1,26 @@
+.page-banner-wrapper {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.page-banner {
+  background-size: cover;
+  background-position: center;
+  border-radius: 12px;
+  padding: 80px 20px;
+  margin-bottom: 30px;
+  color: white;
+}
+
+.page-banner-content {
+  text-align: center;
+  font-weight: bold;
+  font-size: 32px;
+}
+
+.page-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 20px;
+}

@@ -1,5 +1,34 @@
 from django.db import models
 
+# Модель баннеров на сайте
+class PageBanner(models.Model):
+    PAGE_CHOICES = [
+        ('home', 'Главная'),
+        ('excursions', 'Экскурсии'),
+        ('info_meeting', 'Инфо встреча'),
+        ('airport_transfer', 'Трансфер в аэропорт'),
+        ('ask', 'Задать вопрос'),
+        ('contacts', 'Контакты'),
+        ('about', 'О нас'),
+    ]
+
+    page = models.CharField(max_length=50, choices=PAGE_CHOICES, unique=True)
+    image = models.ImageField(upload_to='uploads/banners/')
+    title_ru = models.CharField(max_length=200, blank=True, null=True)
+    title_en = models.CharField(max_length=200, blank=True, null=True)
+    title_es = models.CharField(max_length=200, blank=True, null=True)
+    title_uk = models.CharField(max_length=200, blank=True, null=True)
+    title_et = models.CharField(max_length=200, blank=True, null=True)
+    title_lv = models.CharField(max_length=200, blank=True, null=True)
+    title_lt = models.CharField(max_length=200, blank=True, null=True)
+
+    class Meta:
+        verbose_name = "Баннер"
+        verbose_name_plural = "Баннеры страниц"  # это то, что будет отображаться в админке
+
+    def __str__(self):
+        return f"Баннер для: {self.page}"
+
 # Главной страницы
 class Homepage(models.Model):
     title = models.CharField(max_length=255, verbose_name="Заголовок")
@@ -18,27 +47,63 @@ class InfoMeeting(models.Model):
     title = models.CharField(max_length=255)
     content = models.TextField()
     location = models.CharField(max_length=255, blank=True)
+
     date = models.DateField(blank=True, null=True)
+    time = models.TimeField(blank=True, null=True)
 
     def __str__(self):
-        return self.title
+        return f"InfoMeeting on {self.date} at {self.time}"
 
     class Meta:
         verbose_name = "Инфо встреча"
         verbose_name_plural = "Инфо встречи"
 
+
 # Трансфер в аэропорт 
 class AirportTransfer(models.Model):
     description = models.TextField()
-    price = models.DecimalField(max_digits=6, decimal_places=2)
+    pickup_location = models.CharField(max_length=255, blank=True)  # новое мультиязычное поле
+    departure_date = models.DateField(blank=True, null=True)
+    departure_time = models.TimeField(blank=True, null=True)        # поле времени
     contact_email = models.EmailField()
 
     def __str__(self):
-        return f"Transfer - {self.price} €"
+        return f"Airport Transfer Info"
 
     class Meta:
         verbose_name = "Трансфер в аэропорт"
         verbose_name_plural = "Трансферы в аэропорт"
+
+# Детальный трансфер по категориям и отелям
+class TransferSchedule(models.Model):
+    TRANSFER_TYPE_CHOICES = [
+        ('group', 'Групповой'),
+        ('private', 'Индивидуальный'),
+    ]
+
+    transfer_type = models.CharField(
+        max_length=10,
+        choices=TRANSFER_TYPE_CHOICES,
+        verbose_name="Тип трансфера"
+    )
+
+    hotel = models.ForeignKey('Hotel', on_delete=models.CASCADE, verbose_name="Отель")
+    departure_date = models.DateField(verbose_name="Дата выезда")
+    departure_time = models.TimeField(verbose_name="Время выезда")
+
+    pickup_point = models.ForeignKey('PickupPoint', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Точка сбора")
+
+    # Только для индивидуального трансфера:
+    passenger_last_name = models.CharField(max_length=100, blank=True, verbose_name="Фамилия туриста (если нужно)")
+
+    def __str__(self):
+        return f"{self.get_transfer_type_display()} | {self.hotel.name} | {self.departure_date}"
+
+    class Meta:
+        verbose_name = "Расписание трансфера"
+        verbose_name_plural = "Расписания трансферов"
+        ordering = ['departure_date', 'departure_time']
+
 
 # Задать вопрос
 class Question(models.Model):
@@ -82,10 +147,20 @@ class AboutUs(models.Model):
         verbose_name = "О нас"
         verbose_name_plural = "О нас"
 
+# Регионы
+class Region(models.Model):
+    name = models.CharField(max_length=100, verbose_name="Название региона")
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "Регион"
+        verbose_name_plural = "Регионы"
+
 # Отели
 class Hotel(models.Model):
     name = models.CharField(max_length=200, verbose_name="Название отеля")
-    region = models.CharField(max_length=100, verbose_name="Регион")
     address = models.TextField(blank=True, null=True, verbose_name="Адрес")
     latitude = models.FloatField(blank=True, null=True, verbose_name="Широта")
     longitude = models.FloatField(blank=True, null=True, verbose_name="Долгота")
@@ -95,7 +170,17 @@ class Hotel(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        related_name='related_hotel',  # 👈 добавлено
         verbose_name="Точка сбора"
+    )
+
+    hotel = models.OneToOneField(
+        'Hotel',
+        on_delete=models.CASCADE,
+        related_name='assigned_pickup_point',
+        verbose_name='Отель (для трансфера)',
+        null=True,  # <--- добавь это!
+        blank=True
     )
 
     def __str__(self):
@@ -104,6 +189,29 @@ class Hotel(models.Model):
     class Meta:
         verbose_name = "Отель"
         verbose_name_plural = "Отели"
+
+# Модель точки сбора 
+class PickupPoint(models.Model):
+    name = models.CharField(max_length=200, verbose_name="Название точки сбора")
+    location_description = models.TextField(blank=True, null=True, verbose_name="Описание/примечание")
+    latitude = models.FloatField(verbose_name="Широта")
+    longitude = models.FloatField(verbose_name="Долгота")
+    region = models.CharField(max_length=100, verbose_name="Регион")
+    hotel = models.OneToOneField(
+        'Hotel',
+        on_delete=models.CASCADE,
+        verbose_name="Отель",
+        related_name='pickup_transfer',
+        null=True,
+        blank=True
+    )
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = "Точка сбора"
+        verbose_name_plural = "Точки сбора"
 
 # Экскурсии
 class Excursion(models.Model):
@@ -142,18 +250,3 @@ class Excursion(models.Model):
         verbose_name = "Экскурсия"
         verbose_name_plural = "Экскурсии"
 
-
-# Модель точки сбора 
-class PickupPoint(models.Model):
-    name = models.CharField(max_length=200, verbose_name="Название точки сбора")
-    location_description = models.TextField(blank=True, null=True, verbose_name="Описание/примечание")
-    latitude = models.FloatField(verbose_name="Широта")
-    longitude = models.FloatField(verbose_name="Долгота")
-    region = models.CharField(max_length=100, verbose_name="Регион")
-
-    def __str__(self):
-        return self.name
-
-    class Meta:
-        verbose_name = "Точка сбора"
-        verbose_name_plural = "Точки сбора"

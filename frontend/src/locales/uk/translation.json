@@ -5,5 +5,8 @@
   "airport_transfer": "Трансфер до аеропорту",
   "ask": "Задати питання",
   "contacts": "Контакти",
-  "about": "Про нас"
+  "about": "Про нас",
+  "transfer_to_airport": "Трансфер до аеропорту",
+  "group_transfer": "Груповий трансфер",
+  "private_transfer": "Індивідуальний трансфер"
 }

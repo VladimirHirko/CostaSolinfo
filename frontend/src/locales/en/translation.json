@@ -5,5 +5,9 @@
   "airport_transfer": "Airport Transfer",
   "ask": "Ask a Question",
   "contacts": "Contacts",
-  "about": "About Us"
+  "about": "About Us",
+  "transfer_to_airport": "Airport Transfer",
+  "group_transfer": "Group Transfer",
+  "private_transfer": "Private Transfer"
 }
+

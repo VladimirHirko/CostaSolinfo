@@ -5,5 +5,8 @@
   "airport_transfer": "Pervežimas į oro uostą",
   "ask": "Užduoti klausimą",
   "contacts": "Kontaktai",
-  "about": "Apie mus"
+  "about": "Apie mus",
+  "transfer_to_airport": "Pervežimas į oro uostą",
+  "group_transfer": "Grupinis pervežimas",
+  "private_transfer": "Privatus pervežimas"
 }

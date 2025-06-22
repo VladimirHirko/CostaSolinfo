@@ -5,5 +5,8 @@
   "airport_transfer": "Traslado al aeropuerto",
   "ask": "Hacer una pregunta",
   "contacts": "Contactos",
-  "about": "Sobre nosotros"
+  "about": "Sobre nosotros",
+  "transfer_to_airport": "Traslado al aeropuerto",
+  "group_transfer": "Traslado en grupo",
+  "private_transfer": "Traslado privado"
 }

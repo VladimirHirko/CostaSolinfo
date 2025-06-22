@@ -14,7 +14,7 @@ class InfoMeetingTranslationOptions(TranslationOptions):
 # Трансфер в аэропорт
 @register(AirportTransfer)
 class AirportTransferTranslationOptions(TranslationOptions):
-    fields = ('description',)
+    fields = ('description', 'pickup_location')
 
 # Задать вопрос
 @register(Question)

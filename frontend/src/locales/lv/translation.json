@@ -5,5 +5,8 @@
   "airport_transfer": "Transfērs uz lidostu",
   "ask": "Uzdot jautājumu",
   "contacts": "Kontakti",
-  "about": "Par mums"
+  "about": "Par mums",
+  "transfer_to_airport": "Transfērs uz lidostu",
+  "group_transfer": "Grupas transfērs",
+  "private_transfer": "Privāts transfērs"
 }

@@ -5,5 +5,8 @@
   "airport_transfer": "Transfeer lennujaama",
   "ask": "Esita küsimus",
   "contacts": "Kontaktid",
-  "about": "Meist"
+  "about": "Meist",
+  "transfer_to_airport": "Transfeer lennujaama",
+  "group_transfer": "Grupitransfeer",
+  "private_transfer": "Privaatne transfeer"
 }

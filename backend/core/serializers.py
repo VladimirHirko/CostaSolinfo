@@ -1,4 +1,10 @@
-from core.models import Homepage, Excursion, InfoMeeting, AirportTransfer, Question, ContactInfo, AboutUs
+from core.models import (
+    Homepage, Excursion, InfoMeeting, AirportTransfer, 
+    Question, ContactInfo, AboutUs, TransferSchedule,
+    Hotel, PickupPoint
+    )
+
+from rest_framework import serializers
 from .utils import BaseTranslationSerializer  # путь зависит от твоей структуры проекта
 
 class HomepageSerializer(BaseTranslationSerializer):
@@ -25,12 +31,29 @@ class InfoMeetingSerializer(BaseTranslationSerializer):
         extra_fields = ['date', 'time']  # добавь реальные дополнительные поля, если есть
 
 
+
+# Трансферы
 class AirportTransferSerializer(BaseTranslationSerializer):
-    translatable_fields = ['description']
+    translatable_fields = ['description', 'pickup_location']
 
     class Meta:
         model = AirportTransfer
-        extra_fields = ['departure_time', 'pickup_location']  # поправь по фактическим полям
+        extra_fields = ['departure_time', 'departure_date', 'contact_email']  # поправь по фактическим полям
+
+class TransferScheduleRequestSerializer(serializers.Serializer):
+    transfer_type = serializers.ChoiceField(choices=[('group', 'Group'), ('private', 'Private')])
+    hotel_id = serializers.IntegerField()
+    departure_date = serializers.DateField()
+    passenger_last_name = serializers.CharField(required=False, allow_blank=True)
+
+class TransferScheduleResponseSerializer(serializers.Serializer):
+    departure_time = serializers.TimeField()
+    pickup_point_name = serializers.CharField()
+    pickup_point_lat = serializers.FloatField()
+    pickup_point_lng = serializers.FloatField()
+    hotel_lat = serializers.FloatField()
+    hotel_lng = serializers.FloatField()
+
 
 
 class QuestionSerializer(BaseTranslationSerializer):
