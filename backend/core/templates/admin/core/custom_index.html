@@ -1,0 +1,14 @@
+{% extends "admin/index.html" %}
+
+{% block content %}
+  {{ block.super }}
+  <div class="app-core module">
+    <table>
+      <caption>Дополнительно</caption>
+      <tr class="model">
+        <th scope="row"><a href="{% url 'mass_transfer_schedule' %}">Массовое добавление трансферов</a></th>
+        <td>Добавление времени выезда по отелям</td>
+      </tr>
+    </table>
+  </div>
+{% endblock %}

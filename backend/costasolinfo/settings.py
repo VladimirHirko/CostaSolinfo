@@ -100,6 +100,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+ADMIN_INDEX_TEMPLATE = "admin/core/custom_index.html"
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/

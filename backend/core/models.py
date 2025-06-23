@@ -90,9 +90,7 @@ class TransferSchedule(models.Model):
     hotel = models.ForeignKey('Hotel', on_delete=models.CASCADE, verbose_name="Отель")
     departure_date = models.DateField(verbose_name="Дата выезда")
     departure_time = models.TimeField(verbose_name="Время выезда")
-
     pickup_point = models.ForeignKey('PickupPoint', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Точка сбора")
-
     # Только для индивидуального трансфера:
     passenger_last_name = models.CharField(max_length=100, blank=True, verbose_name="Фамилия туриста (если нужно)")
 
@@ -101,7 +99,7 @@ class TransferSchedule(models.Model):
 
     class Meta:
         verbose_name = "Расписание трансфера"
-        verbose_name_plural = "Расписания трансферов"
+        verbose_name_plural = "Массовое добавление расписания трансферов"
         ordering = ['departure_date', 'departure_time']
 
 
@@ -164,6 +162,7 @@ class Hotel(models.Model):
     address = models.TextField(blank=True, null=True, verbose_name="Адрес")
     latitude = models.FloatField(blank=True, null=True, verbose_name="Широта")
     longitude = models.FloatField(blank=True, null=True, verbose_name="Долгота")
+    region = models.ForeignKey('Region', on_delete=models.SET_NULL, null=True, blank=True, related_name='hotels')
 
     pickup_point = models.ForeignKey(
         'PickupPoint',
@@ -192,26 +191,55 @@ class Hotel(models.Model):
 
 # Модель точки сбора 
 class PickupPoint(models.Model):
+    TRANSFER_TYPE_CHOICES = [
+        ('group', 'Групповой трансфер'),
+        ('private', 'Индивидуальный трансфер'),
+    ]
+
     name = models.CharField(max_length=200, verbose_name="Название точки сбора")
     location_description = models.TextField(blank=True, null=True, verbose_name="Описание/примечание")
     latitude = models.FloatField(verbose_name="Широта")
     longitude = models.FloatField(verbose_name="Долгота")
     region = models.CharField(max_length=100, verbose_name="Регион")
-    hotel = models.OneToOneField(
+
+    hotel = models.ForeignKey(  # 🟢 РАЗРЕШАЕТ МНОГО ТОЧЕК НА 1 ОТЕЛЬ
         'Hotel',
         on_delete=models.CASCADE,
         verbose_name="Отель",
-        related_name='pickup_transfer',
+        related_name='pickup_points',  # 🔁 теперь related_name — список, а не один объект
         null=True,
         blank=True
     )
 
+    transfer_type = models.CharField(
+        max_length=10,
+        choices=TRANSFER_TYPE_CHOICES,
+        default='group',
+        verbose_name="Тип трансфера"
+    )
+
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.get_transfer_type_display()})"
 
     class Meta:
-        verbose_name = "Точка сбора"
-        verbose_name_plural = "Точки сбора"
+        verbose_name = "Точки сбора для трансферов"
+        verbose_name_plural = "Точки сбора для трансферов"
+
+# Модель группового трансфера
+class GroupTransferPickupPoint(PickupPoint):
+    class Meta:
+        proxy = True
+        verbose_name = "Точка сбора (Групповой трансфер)"
+        verbose_name_plural = "Точки сбора для группового трансфера"
+
+# Модель индивидуального трансфера
+class PrivateTransferPickupPoint(PickupPoint):
+    class Meta:
+        proxy = True
+        verbose_name = "Точка сбора (Индивидуальный трансфер)"
+        verbose_name_plural = "Точки сбора для индивидуального трансфера"
+
+
 
 # Экскурсии
 class Excursion(models.Model):

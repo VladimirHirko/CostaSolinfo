@@ -1,0 +1,31 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+  <h1>Массовое расписание трансферов</h1>
+  <form method="post">{% csrf_token %}
+    {{ form.transfer_type }}
+    {{ form.transfer_date }}
+    <table>
+      <tr>
+        <th>Отель</th>
+        <th>Время выезда</th>
+        <th>Точка сбора</th>
+      </tr>
+      {% for field in form %}
+        {% if field.name|slice:":5" == "time_" %}
+          <tr>
+            <td>{{ field.label }}</td>
+            <td>{{ field }}</td>
+            <td>
+              {% with pickup_name="pickup_"|add:field.name|slice:"5:" %}
+                {{ form[pickup_name] }}
+              {% endwith %}
+            </td>
+          </tr>
+        {% endif %}
+      {% endfor %}
+    </table>
+    <button type="submit" class="default">Сохранить</button>
+  </form>
+{% endblock %}

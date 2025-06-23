@@ -7,7 +7,7 @@ from core import views
 from core.views import (
     HomepageView, InfoMeetingView, AirportTransferView, QuestionView,
     ContactInfoView, AboutUsView, ExcursionView, TransferScheduleLookupView,
-    page_banner_api
+    page_banner_api, BulkTransferScheduleForm
 )
 
 urlpatterns = [

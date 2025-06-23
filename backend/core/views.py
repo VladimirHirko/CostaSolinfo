@@ -15,6 +15,11 @@ from .serializers import (
     QuestionSerializer, ContactInfoSerializer, AboutUsSerializer, ExcursionSerializer,
     TransferScheduleRequestSerializer, TransferScheduleResponseSerializer
 )
+from django.contrib import admin
+from django.urls import path
+from django.shortcuts import render, redirect
+from .forms import BulkTransferScheduleForm
+from .models import Hotel, TransferSchedule
 
 # Главное правило: RetrieveAPIView + queryset + serializer_class
 
@@ -59,6 +64,46 @@ class AirportTransferView(RetrieveAPIView):
 
     def get_object(self):
         return self.queryset.first()
+
+# Массовое добавление времени на трансферы
+class BulkTransferScheduleAdmin:
+    def get_urls(self):
+        urls = super().get_urls()
+        my_urls = [
+            path("mass-transfer-schedule/", self.admin_site.admin_view(self.bulk_transfer_schedule), name="mass_transfer_schedule")
+        ]
+        return my_urls + urls
+
+    def bulk_transfer_schedule(self, request):
+        if request.method == 'POST':
+            form = BulkTransferScheduleForm(request.POST)
+            if form.is_valid():
+                transfer_type = form.cleaned_data['transfer_type']
+                transfer_date = form.cleaned_data['transfer_date']
+
+                for hotel in Hotel.objects.all():
+                    time_field = f"time_{hotel.id}"
+                    point_field = f"pickup_{hotel.id}"
+                    time = form.cleaned_data.get(time_field)
+                    point = form.cleaned_data.get(point_field)
+
+                    if time and point:
+                        TransferSchedule.objects.create(
+                            transfer_type=transfer_type,
+                            date=transfer_date,
+                            hotel=hotel,
+                            pickup_point=point,
+                            departure_time=time
+                        )
+                self.message_user(request, "Расписание успешно добавлено!")
+                return redirect("..")
+        else:
+            form = BulkTransferScheduleForm()
+
+        return render(request, "admin/bulk_transfer_schedule.html", {
+            "form": form,
+            "title": "Массовое добавление расписания трансферов",
+        })
 
 class TransferScheduleLookupView(APIView):
     def post(self, request):
