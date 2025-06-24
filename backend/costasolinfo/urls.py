@@ -7,8 +7,11 @@ from core import views
 from core.views import (
     HomepageView, InfoMeetingView, AirportTransferView, QuestionView,
     ContactInfoView, AboutUsView, ExcursionView, TransferScheduleLookupView,
-    page_banner_api, BulkTransferScheduleForm
+    page_banner_api, BulkTransferScheduleForm, transfer_info, transfer_schedule_view,
+    available_hotels_for_transfer, TransferNotificationViewSet
 )
+
+transfer_notification_view = TransferNotificationViewSet.as_view({'post': 'create'})
 
 urlpatterns = [
     path('grappelli/', include('grappelli.urls')),  # Grappelli UI
@@ -19,6 +22,10 @@ urlpatterns = [
     path('api/homepage/', HomepageView.as_view(), name='homepage'),
     path('api/info-meeting/', InfoMeetingView.as_view(), name='info-meeting'),
     path('api/airport-transfer/', AirportTransferView.as_view(), name='airport-transfer'),
+    path('api/transfer-info/', transfer_info, name='transfer_info'),
+    path('api/transfer-schedule/', transfer_schedule_view, name='transfer_schedule'),
+    path('api/transfer-notifications/', transfer_notification_view, name='transfer-notification'),
+    path('api/available-hotels/', available_hotels_for_transfer, name='available_hotels_for_transfer'),
     path('api/question/', QuestionView.as_view(), name='question'),
     path('api/contact-info/', ContactInfoView.as_view(), name='contact-info'),
     path('api/about-us/', AboutUsView.as_view(), name='about-us'),

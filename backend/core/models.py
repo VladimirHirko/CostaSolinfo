@@ -1,4 +1,12 @@
 from django.db import models
+from django.utils.translation import gettext_lazy as _
+from django.conf import settings
+
+TRANSFER_TYPE_CHOICES = [
+        ('group', 'Групповой'),
+        ('private', 'Индивидуальный'),
+    ]
+
 
 # Модель баннеров на сайте
 class PageBanner(models.Model):
@@ -76,23 +84,29 @@ class AirportTransfer(models.Model):
 
 # Детальный трансфер по категориям и отелям
 class TransferSchedule(models.Model):
-    TRANSFER_TYPE_CHOICES = [
-        ('group', 'Групповой'),
-        ('private', 'Индивидуальный'),
-    ]
-
     transfer_type = models.CharField(
         max_length=10,
         choices=TRANSFER_TYPE_CHOICES,
         verbose_name="Тип трансфера"
     )
-
     hotel = models.ForeignKey('Hotel', on_delete=models.CASCADE, verbose_name="Отель")
     departure_date = models.DateField(verbose_name="Дата выезда")
     departure_time = models.TimeField(verbose_name="Время выезда")
     pickup_point = models.ForeignKey('PickupPoint', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Точка сбора")
-    # Только для индивидуального трансфера:
     passenger_last_name = models.CharField(max_length=100, blank=True, verbose_name="Фамилия туриста (если нужно)")
+    group = models.ForeignKey(
+        'TransferScheduleGroup',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='schedules',
+        verbose_name="Группа трансфера"
+    )
+
+    def save(self, *args, **kwargs):
+        if self.hotel and not self.pickup_point:
+            self.pickup_point = self.hotel.pickup_point
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.get_transfer_type_display()} | {self.hotel.name} | {self.departure_date}"
@@ -101,6 +115,66 @@ class TransferSchedule(models.Model):
         verbose_name = "Расписание трансфера"
         verbose_name_plural = "Массовое добавление расписания трансферов"
         ordering = ['departure_date', 'departure_time']
+
+# Создание группы трансферов для редактирования
+class TransferScheduleGroup(models.Model):
+    date = models.DateField(verbose_name="Дата трансфера")
+    transfer_type = models.CharField(
+        max_length=10,
+        choices=TRANSFER_TYPE_CHOICES,
+        verbose_name="Тип трансфера"
+    )
+
+    def __str__(self):
+        return f"{self.get_transfer_type_display()} — {self.date}"
+
+# Отправка писемь о трансферах подписчикам
+class TransferNotification(models.Model):
+    TRANSFER_TYPE_CHOICES = [
+        ('group', _('Group Transfer')),
+        ('private', _('Private Transfer')),
+    ]
+
+    email = models.EmailField(_("Email"))
+    hotel = models.ForeignKey('Hotel', on_delete=models.CASCADE, verbose_name=_("Hotel"))
+    transfer_type = models.CharField(max_length=10, choices=TRANSFER_TYPE_CHOICES, verbose_name=_("Transfer Type"))
+    transfer_date = models.DateField(verbose_name=_("Transfer Date"))
+    language = models.CharField(max_length=10, choices=settings.LANGUAGES, default='ru', verbose_name=_("Language"))
+    created_at = models.DateTimeField(auto_now_add=True)
+    notified = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ('email', 'hotel', 'transfer_type', 'transfer_date')
+        verbose_name = _("Transfer Notification")
+        verbose_name_plural = _("Transfer Notifications")
+
+    def __str__(self):
+        return f"{self.email} - {self.hotel.name} - {self.transfer_date} ({self.transfer_type})"
+
+# Модель для подписки TransferNotification
+class TransferNotification(models.Model):
+    email = models.EmailField(verbose_name=_("Email"))
+    transfer_type = models.CharField(
+        max_length=10,
+        choices=[('group', _("Group")), ('private', _("Private"))],
+        verbose_name=_("Transfer Type")
+    )
+    hotel = models.ForeignKey('Hotel', on_delete=models.CASCADE, verbose_name=_("Hotel"))
+    departure_date = models.DateField(verbose_name=_("Departure Date"))
+    language = models.CharField(
+        max_length=10,
+        choices=settings.LANGUAGES,
+        default='ru',
+        verbose_name=_("Language")
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("Transfer Notification")
+        verbose_name_plural = _("Transfer Notifications")
+
+    def __str__(self):
+        return f"{self.email} ({self.hotel}) {self.departure_date} [{self.transfer_type}]"
 
 
 # Задать вопрос
@@ -173,19 +247,11 @@ class Hotel(models.Model):
         verbose_name="Точка сбора"
     )
 
-    hotel = models.OneToOneField(
-        'Hotel',
-        on_delete=models.CASCADE,
-        related_name='assigned_pickup_point',
-        verbose_name='Отель (для трансфера)',
-        null=True,  # <--- добавь это!
-        blank=True
-    )
-
     def __str__(self):
         return self.name
 
     class Meta:
+        ordering = ['name']  # по имени
         verbose_name = "Отель"
         verbose_name_plural = "Отели"
 

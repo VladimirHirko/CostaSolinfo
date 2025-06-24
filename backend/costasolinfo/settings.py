@@ -147,6 +147,8 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static"),  # исходные статические файлы
 ]
 
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@costasolinfo.com'
 
 
 

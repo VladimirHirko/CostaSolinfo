@@ -1,22 +1,26 @@
+from datetime import datetime
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view  # 🔧 Добавь это
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import viewsets, status
 from django.http import JsonResponse
 from core.models import (
     Homepage, InfoMeeting, AirportTransfer, Question, 
     ContactInfo, AboutUs, Excursion, TransferSchedule, Hotel,
-    PageBanner, Hotel
+    PageBanner, Hotel, PickupPoint, TransferNotification
     )
 
 from .serializers import (
     HomepageSerializer, InfoMeetingSerializer, AirportTransferSerializer,
     QuestionSerializer, ContactInfoSerializer, AboutUsSerializer, ExcursionSerializer,
-    TransferScheduleRequestSerializer, TransferScheduleResponseSerializer
-)
+    TransferScheduleRequestSerializer, TransferScheduleResponseSerializer,
+    HotelSerializer, SimpleHotelSerializer, TransferNotificationCreateSerializer
+    )
+from django.core.mail import send_mail
 from django.contrib import admin
 from django.urls import path
+from django.utils.translation import activate, gettext as _
 from django.shortcuts import render, redirect
 from .forms import BulkTransferScheduleForm
 from .models import Hotel, TransferSchedule
@@ -141,8 +145,123 @@ class TransferScheduleLookupView(APIView):
 
         return Response(serializer.errors, status=400)
 
+# Вывод информации о трансфере для туриста
+@api_view(['GET'])
+def transfer_info(request):
+    hotel_id = request.GET.get('hotel_id')
+    date = request.GET.get('date')
+
+    if not hotel_id or not date:
+        return Response({"error": "Missing hotel_id or date"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        schedule = TransferSchedule.objects.get(hotel_id=hotel_id, departure_date=date)
+        pickup = schedule.pickup_point
+        return Response({
+            "departure_time": schedule.departure_time.strftime("%H:%M"),
+            "pickup_point": {
+                "name": pickup.name if pickup else "—",
+                "latitude": pickup.latitude if pickup else None,
+                "longitude": pickup.longitude if pickup else None,
+            }
+        })
+    except TransferSchedule.DoesNotExist:
+        return Response({"error": "No transfer found for given hotel and date"}, status=status.HTTP_404_NOT_FOUND)
 
 
+@api_view(['GET'])
+def transfer_schedule_view(request):
+    hotel_id = request.GET.get('hotel_id')
+    date = request.GET.get('date')
+    transfer_type = request.GET.get('type', 'group')  # по умолчанию групповой
+
+    if not hotel_id or not date:
+        return Response({"error": "Missing hotel_id or date"}, status=400)
+
+    try:
+        transfers = TransferSchedule.objects.filter(
+            hotel_id=hotel_id,
+            departure_date=date,
+            transfer_type=transfer_type
+        ).order_by('departure_time')
+
+        if not transfers.exists():
+            return Response({'error': 'No transfer schedule found'}, status=404)
+
+        transfer = transfers.first()
+
+        # 🔹 Здесь вместо transfer.pickup_point берём точку по отелю и типу трансфера
+        hotel = transfer.hotel
+        pickup_point = PickupPoint.objects.filter(hotel=hotel, transfer_type=transfer_type).first()
+
+        return Response({
+            "pickup_time": transfer.departure_time.strftime("%H:%M"),
+            "pickup_point": pickup_point.name if pickup_point else "—",
+            "pickup_lat": pickup_point.latitude if pickup_point else None,
+            "pickup_lng": pickup_point.longitude if pickup_point else None,
+        })
+
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
+@api_view(['GET'])
+def available_hotels_for_transfer(request):
+    date_str = request.GET.get('date')
+    transfer_type = request.GET.get('type', 'group')  # default = group
+
+    if not date_str:
+        return Response({"error": "Missing date parameter"}, status=400)
+
+    try:
+        date = datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return Response({"error": "Invalid date format. Use YYYY-MM-DD."}, status=400)
+
+    hotel_ids = TransferSchedule.objects.filter(
+        departure_date=date,
+        transfer_type=transfer_type
+    ).values_list('hotel_id', flat=True).distinct()
+
+    hotels = Hotel.objects.filter(id__in=hotel_ids)
+    serializer = SimpleHotelSerializer(hotels, many=True)
+    return Response(serializer.data)
+
+
+# Вьюха отправки писем подписчикам по трансферам
+class TransferNotificationViewSet(viewsets.ViewSet):
+    def create(self, request):
+        serializer = TransferNotificationCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            instance = serializer.save()
+
+            # Активируем язык для письма
+            activate(instance.language)
+
+            # Текст письма
+            subject = _("Ваш трансфер на {date}").format(date=instance.departure_date.strftime('%d.%m.%Y'))
+            message = _(
+                "Благодарим за регистрацию на уведомления о трансфере из отеля {hotel}.\n\n"
+                "Дата трансфера: {date}\n"
+                "Тип трансфера: {type}\n"
+                "Вы получите письмо, если время выезда будет изменено.\n\n"
+                "Спасибо!"
+            ).format(
+                hotel=instance.hotel.name,
+                date=instance.departure_date.strftime('%d.%m.%Y'),
+                type=instance.get_transfer_type_display()
+            )
+
+            send_mail(
+                subject,
+                message,
+                'info@costasolinfo.com',  # Адрес отправителя
+                [instance.email],
+                fail_silently=False,
+            )
+
+            return Response({"detail": _("Информация отправлена на почту.")}, status=201)
+        return Response(serializer.errors, status=400)
+        
 
 class QuestionView(RetrieveAPIView):
     queryset = Question.objects.all()

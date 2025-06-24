@@ -8,7 +8,7 @@ from .models import (
     Homepage, InfoMeeting, AirportTransfer,
     Question, ContactInfo, AboutUs, TransferSchedule,
     Region, PageBanner, GroupTransferPickupPoint, PrivateTransferPickupPoint,
-    TransferSchedule
+    TransferSchedule, TransferScheduleGroup, TransferNotification
 )
 from django.urls import path
 from django.utils.safestring import mark_safe
@@ -317,5 +317,54 @@ class TransferScheduleAdmin(admin.ModelAdmin):
     list_filter = ['transfer_type', 'departure_date']
     search_fields = ['hotel__name', 'passenger_last_name']
 
+    def save_formset(self, request, form, formset, change):
+        """
+        При сохранении каждого TransferSchedule внутри группы —
+        автоматически подставляем дату и тип трансфера из родительской группы.
+        """
+        instances = formset.save(commit=False)
+        for obj in instances:
+            if form.instance:  # это объект TransferScheduleGroup
+                obj.group = form.instance
+                obj.departure_date = form.instance.date
+                if not obj.transfer_type:
+                    obj.transfer_type = form.instance.transfer_type
+            obj.save()
+        formset.save_m2m()
 
+# Inline для TransferSchedule
+class TransferScheduleInline(admin.TabularInline):
+    model = TransferSchedule
+    extra = 1  # сколько пустых строк по умолчанию
+    autocomplete_fields = ['hotel', 'pickup_point']
+    fields = ('hotel', 'departure_time', 'pickup_point', 'passenger_last_name')
+    show_change_link = True
 
+    
+
+# Админка для TransferScheduleGroup  
+@admin.register(TransferScheduleGroup)
+class TransferScheduleGroupAdmin(admin.ModelAdmin):
+    inlines = [TransferScheduleInline]
+    list_display = ['date', 'transfer_type']
+
+    def save_model(self, request, obj, form, change):
+        # Сохраняем саму группу (TransferScheduleGroup)
+        super().save_model(request, obj, form, change)
+
+    def save_formset(self, request, form, formset, change):
+        # Здесь formset — один из inlines (TransferScheduleInline)
+        instances = formset.save(commit=False)
+        for instance in instances:
+            instance.group = form.instance  # Привязка к текущей группе
+            instance.departure_date = form.instance.date  # Копируем дату из группы
+            instance.transfer_type = form.instance.transfer_type  # Копируем тип трансфера
+            instance.save()
+        formset.save_m2m()
+
+# Админка для нотификаций по трансферам
+@admin.register(TransferNotification)
+class TransferNotificationAdmin(admin.ModelAdmin):
+    list_display = ('email', 'hotel', 'departure_date', 'transfer_type', 'language')
+    list_filter = ('transfer_type', 'departure_date', 'hotel', 'language')
+    search_fields = ('email',)

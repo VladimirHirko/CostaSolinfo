@@ -1,9 +1,10 @@
 from core.models import (
     Homepage, Excursion, InfoMeeting, AirportTransfer, 
     Question, ContactInfo, AboutUs, TransferSchedule,
-    Hotel, PickupPoint
+    Hotel, PickupPoint, TransferNotification
     )
-
+from django.utils.translation import gettext_lazy as _
+from django.utils import timezone
 from rest_framework import serializers
 from .utils import BaseTranslationSerializer  # путь зависит от твоей структуры проекта
 
@@ -53,6 +54,37 @@ class TransferScheduleResponseSerializer(serializers.Serializer):
     pickup_point_lng = serializers.FloatField()
     hotel_lat = serializers.FloatField()
     hotel_lng = serializers.FloatField()
+
+class TransferNotificationCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TransferNotification
+        fields = ['email', 'transfer_type', 'hotel', 'departure_date', 'language']
+
+    def validate_email(self, value):
+        if not value or '@' not in value:
+            raise serializers.ValidationError(_("Введите корректный email."))
+        return value
+
+    def create(self, validated_data):
+        instance, created = TransferNotification.objects.get_or_create(
+            email=validated_data['email'],
+            hotel=validated_data['hotel'],
+            transfer_type=validated_data['transfer_type'],
+            departure_date=validated_data['departure_date'],
+            language=validated_data.get('language', 'ru'),
+        )
+        return instance
+
+
+class HotelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Hotel
+        fields = ['id', 'name', 'latitude', 'longitude']
+
+class SimpleHotelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Hotel
+        fields = ['id', 'name']  # можно добавить другие поля, если нужно
 
 
 

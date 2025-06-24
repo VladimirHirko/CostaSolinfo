@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Информация о трансфере</title>
+</head>
+<body style="font-family: sans-serif; color: #333; line-height: 1.6;">
+  <h2>Уважаемый турист,</h2>
+
+  <p>Ваш трансфер в аэропорт назначен на <strong>{{ departure_time }}</strong>.</p>
+  <p>Точка отправления: <strong>{{ pickup_point_name }}</strong></p>
+  <p>Координаты: <strong>{{ coords }}</strong></p>
+
+  {% if maps_link %}
+    <p><a href="{{ maps_link }}" target="_blank" style="color: #007BFF;">📍 Открыть точку на карте</a></p>
+  {% else %}
+    <p><em>Ссылка на карту недоступна.</em></p>
+  {% endif %}
+
+  <p>Если произойдут изменения — вы получите новое письмо.</p>
+
+  <br>
+  <p>С уважением,<br><strong>Команда CostaSolinfo</strong></p>
+</body>
+</html>
