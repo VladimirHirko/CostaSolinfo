@@ -6,8 +6,24 @@
   "ask": "Ask a Question",
   "contacts": "Contacts",
   "about": "About Us",
-  "transfer_to_airport": "Airport Transfer",
+  "transfer_to_airport": "Transfer to Airport",
   "group_transfer": "Group Transfer",
-  "private_transfer": "Private Transfer"
+  "private_transfer": "Private Transfer",
+  "enter_hotel_and_date": "Please specify the hotel and departure date",
+  "group_transfer": "Group Transfer",
+  "enter_hotel_and_date": "Enter the hotel and departure date to get the exact transfer time",
+  "enter_hotel": "Enter the hotel name",
+  "select_date": "Select the transfer date",
+  "show_transfer_time": "Show Transfer Time",
+  "pickup_time": "Pickup Time",
+  "pickup_point": "Pickup Point",
+  "please_fill_all_fields": "Please fill in all fields",
+  "something_went_wrong": "Something went wrong. Please try again.",
+  "want_to_receive_email": "Would you like to receive this information via email?",
+  "email_info_text": "We will send you the transfer time and a map link. If there are any changes, you will receive a new email.",
+  "enter_email": "Enter your email",
+  "consent_text": "I have read and agree to the terms and privacy policy",
+  "send_to_email": "Send to Email",
+  "email_sent_success": "Information has been successfully sent to your email!",
+  "email_send_error": "Error sending email. Please try again later."
 }
-
