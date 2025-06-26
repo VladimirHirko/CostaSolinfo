@@ -16,9 +16,22 @@ const AirportTransferPrivatePage = () => {
   const [pickupTime, setPickupTime] = useState('');
   const [pickupPoint, setPickupPoint] = useState('');
   const [pickupCoords, setPickupCoords] = useState(null);
+  const [transfers, setTransfers] = useState([]);
+  const [showInquiryForm, setShowInquiryForm] = useState(false);
+  const [lastName, setLastName] = useState('');
+  const [needLastName, setNeedLastName] = useState(false);
   const [email, setEmail] = useState('');
   const [checkboxAccepted, setCheckboxAccepted] = useState(false);
   const [emailSentMessage, setEmailSentMessage] = useState('');
+
+  const [inquiryLastName, setInquiryLastName] = useState('');
+  const [inquiryHotel, setInquiryHotel] = useState('');
+  const [inquiryDate, setInquiryDate] = useState(null);
+  const [inquiryFlight, setInquiryFlight] = useState('');
+  const [inquiryMessage, setInquiryMessage] = useState('');
+  const [inquiryEmail, setInquiryEmail] = useState('');
+  const [inquirySuccessMessage, setInquirySuccessMessage] = useState('');
+
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -51,31 +64,130 @@ const AirportTransferPrivatePage = () => {
       return;
     }
 
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    const dateStr = localDate.toISOString().split('T')[0];
+
+    let url = `http://localhost:8000/api/transfer-schedule/?hotel_id=${hotelId}&date=${dateStr}&type=private`;
+    if (lastName) {
+      url += `&last_name=${encodeURIComponent(lastName.trim())}`;
+    }
+
     try {
-      const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-      const dateStr = localDate.toISOString().split('T')[0];
-
-      const url = `http://localhost:8000/api/transfer-schedule/?hotel_id=${hotelId}&date=${dateStr}&type=private`;
-
       const response = await fetch(url);
       const data = await response.json();
 
       if (response.ok) {
-        setPickupTime(data.pickup_time || '');
-        setPickupPoint(data.pickup_point || '');
-        setPickupCoords({ lat: data.pickup_lat, lng: data.pickup_lng });
-        setError('');
+        if (Array.isArray(data) && data.length > 1 && !lastName) {
+          // Нужно уточнение фамилии
+          setTransfers(data);
+          setNeedLastName(true);
+          setPickupTime('');
+          setPickupPoint('');
+          setPickupCoords(null);
+          setError(t('please_enter_last_name'));
+        } else if (Array.isArray(data) && data.length === 1) {
+          const item = data[0];
+          setPickupTime(item.pickup_time || '');
+          setPickupPoint(item.pickup_point || '');
+          setPickupCoords({ lat: item.pickup_lat, lng: item.pickup_lng });
+          setNeedLastName(false);
+          setError('');
+        } else if (!Array.isArray(data)) {
+          setPickupTime(data.pickup_time || '');
+          setPickupPoint(data.pickup_point || '');
+          setPickupCoords({ lat: data.pickup_lat, lng: data.pickup_lng });
+          setNeedLastName(false);
+          setError('');
+        } else {
+          setError(t('no_transfer_found'));
+          setPickupTime('');
+          setPickupPoint('');
+          setPickupCoords(null);
+        }
       } else {
-        setPickupTime('');
-        setPickupPoint('');
-        setPickupCoords(null);
-        setError(data.error || t('something_went_wrong'));
+        if (
+          data?.detail?.includes('No transfer schedule') ||
+          data?.error?.includes('No transfer schedule')
+        ) {
+          setError(t('no_transfer_schedule_for_this_date'));
+          setShowInquiryForm(true);
+          setPickupTime('');
+          setPickupPoint('');
+          setPickupCoords(null);
+          return;
+        }
+
+        if (data?.error?.includes('No transfer found for this last name')) {
+          setError(t('no_transfer_for_lastname'));
+          setShowInquiryForm(true);
+          return;
+        }
+
+        if (data?.error === 'No exact match found' && data?.suggestion) {
+          setError(`${t('did_you_mean')} "${data.suggestion}"?`);
+          return;
+        }
+
+        setError(data?.error || t('something_went_wrong'));
       }
     } catch (err) {
       console.error(err);
       setError(t('something_went_wrong'));
     }
   };
+
+
+
+  const handleInquirySubmit = async (e) => {
+    e.preventDefault();
+
+    if (!inquiryLastName || !inquiryHotel || !inquiryDate || !inquiryEmail) {
+      setError(t('please_fill_all_fields'));
+      return;
+    }
+
+    try {
+      const localDate = new Date(inquiryDate.getTime() - inquiryDate.getTimezoneOffset() * 60000);
+      const dateStr = localDate.toISOString().split('T')[0];
+
+      const response = await fetch('http://localhost:8000/api/transfer-inquiries/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          last_name: inquiryLastName.trim(),
+          hotel_name: inquiryHotel.trim(),
+          departure_date: dateStr,
+          flight_number: inquiryFlight.trim(),
+          message: inquiryMessage.trim(),
+          email: inquiryEmail.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        setInquirySuccessMessage(t('request_sent_successfully'));
+
+        setInquiryLastName('');
+        setInquiryHotel('');
+        setInquiryDate(null);
+        setInquiryFlight('');
+        setInquiryMessage('');
+        setInquiryEmail('');
+        setError('');
+        setShowInquiryForm(false);
+      } else {
+        const data = await response.json();
+        console.error('Ошибка запроса:', data);
+        setError(t('request_error'));
+      }
+    } catch (err) {
+      console.error('Ошибка соединения:', err);
+      setError(t('request_error'));
+    }
+  };
+
+
 
   const handleEmailSubmit = async () => {
     if (!email || !checkboxAccepted || !hotelId || !date) return;
@@ -155,6 +267,101 @@ const AirportTransferPrivatePage = () => {
       </form>
 
       {error && <p className="error-message">{error}</p>}
+
+      {needLastName && (
+        <div className="transfer-form left-aligned" style={{ marginTop: '20px' }}>
+          <label htmlFor="lastNameInput">{t('enter_last_name')}</label>
+          <input
+            id="lastNameInput"
+            type="text"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            placeholder={t('your_last_name')}
+            className="transfer-input"
+          />
+          <button
+            onClick={handleSubmit}
+            className="transfer-button"
+            style={{ marginTop: '15px' }}
+          >
+            {t('find_my_transfer')}
+          </button>
+        </div>
+      )}
+
+      {error === 'No transfer found for this last name' && (
+        <div style={{ marginTop: '30px' }}>
+          <p>{t('not_found_contact_us')}</p>
+          <button
+            className="transfer-button"
+            onClick={() => setShowInquiryForm(true)}
+          >
+            {t('open_contact_form')}
+          </button>
+        </div>
+      )}
+
+      {showInquiryForm && (
+        <form onSubmit={handleInquirySubmit} className="transfer-form left-aligned" style={{ marginTop: '20px' }}>
+          <label>{t('your_last_name')}</label>
+          <input
+            type="text"
+            value={inquiryLastName}
+            onChange={(e) => setInquiryLastName(e.target.value)}
+            className="transfer-input"
+          />
+
+          <label>{t('your_hotel')}</label>
+          <input
+            type="text"
+            value={inquiryHotel}
+            onChange={(e) => setInquiryHotel(e.target.value)}
+            className="transfer-input"
+          />
+
+          <label>{t('departure_date')}</label>
+          <DatePicker
+            selected={inquiryDate}
+            onChange={(date) => setInquiryDate(date)}
+            placeholderText={t('select_date')}
+            className="transfer-input"
+            dateFormat="yyyy-MM-dd"
+          />
+
+          <label>{t('flight_number')}</label>
+          <input
+            type="text"
+            value={inquiryFlight}
+            onChange={(e) => setInquiryFlight(e.target.value)}
+            className="transfer-input"
+          />
+
+          <label>{t('question')}</label>
+          <textarea
+            value={inquiryMessage}
+            onChange={(e) => setInquiryMessage(e.target.value)}
+            className="transfer-input"
+          />
+
+          <label>{t('your_email')}</label>
+          <input
+            type="email"
+            value={inquiryEmail}
+            onChange={(e) => setInquiryEmail(e.target.value)}
+            className="transfer-input"
+          />
+
+          <button className="transfer-button" style={{ marginTop: '15px' }}>
+            {t('send_request')}
+          </button>
+        </form>
+      )}
+
+      {inquirySuccessMessage && !pickupTime && (
+        <p style={{ marginTop: '15px', color: 'green' }}>{inquirySuccessMessage}</p>
+      )}
+
+
 
       {pickupTime && (
         <div className="transfer-result">

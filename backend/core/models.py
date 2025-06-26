@@ -177,6 +177,8 @@ class TransferNotification(models.Model):
         return f"{self.email} ({self.hotel}) {self.departure_date} [{self.transfer_type}]"
 
 
+
+
 # Задать вопрос
 class Question(models.Model):
     name = models.CharField(max_length=100)
@@ -254,6 +256,19 @@ class Hotel(models.Model):
         ordering = ['name']  # по имени
         verbose_name = "Отель"
         verbose_name_plural = "Отели"
+
+# Модель формы обратной связи если фамилия не найдена на индивидуальном трансфере
+class TransferInquiry(models.Model):
+    last_name = models.CharField(max_length=100)
+    hotel = models.ForeignKey(Hotel, on_delete=models.SET_NULL, null=True)
+    departure_date = models.DateField()
+    flight_number = models.CharField(max_length=50, blank=True)
+    message = models.TextField(blank=True)
+    email = models.EmailField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.last_name} — {self.departure_date}"
 
 # Модель точки сбора 
 class PickupPoint(models.Model):

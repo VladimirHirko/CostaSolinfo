@@ -1,3 +1,4 @@
+import Levenshtein
 from datetime import datetime
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.views import APIView
@@ -8,14 +9,16 @@ from django.http import JsonResponse
 from core.models import (
     Homepage, InfoMeeting, AirportTransfer, Question, 
     ContactInfo, AboutUs, Excursion, TransferSchedule, Hotel,
-    PageBanner, Hotel, PickupPoint, TransferNotification
+    PageBanner, Hotel, PickupPoint, TransferNotification,
+    TransferInquiry
     )
 
 from .serializers import (
     HomepageSerializer, InfoMeetingSerializer, AirportTransferSerializer,
     QuestionSerializer, ContactInfoSerializer, AboutUsSerializer, ExcursionSerializer,
     TransferScheduleRequestSerializer, TransferScheduleResponseSerializer,
-    HotelSerializer, SimpleHotelSerializer, TransferNotificationCreateSerializer
+    HotelSerializer, SimpleHotelSerializer, TransferNotificationCreateSerializer,
+    TransferInquirySerializer
     )
 from django.core.mail import send_mail
 from django.contrib import admin
@@ -173,7 +176,8 @@ def transfer_info(request):
 def transfer_schedule_view(request):
     hotel_id = request.GET.get('hotel_id')
     date = request.GET.get('date')
-    transfer_type = request.GET.get('type', 'group')  # по умолчанию групповой
+    transfer_type = request.GET.get('type', 'group')
+    last_name = request.GET.get('last_name', '').strip().lower()
 
     if not hotel_id or not date:
         return Response({"error": "Missing hotel_id or date"}, status=400)
@@ -188,21 +192,80 @@ def transfer_schedule_view(request):
         if not transfers.exists():
             return Response({'error': 'No transfer schedule found'}, status=404)
 
-        transfer = transfers.first()
+        if transfer_type == 'private':
+            # Если фамилия указана — ищем по ней
+            if last_name:
+                match = transfers.filter(passenger_last_name__iexact=last_name).first()
+                if not match:
+                    # 🔍 Попробуем найти ближайшую фамилию по смыслу
+                    from Levenshtein import distance as levenshtein_distance
 
-        # 🔹 Здесь вместо transfer.pickup_point берём точку по отелю и типу трансфера
-        hotel = transfer.hotel
-        pickup_point = PickupPoint.objects.filter(hotel=hotel, transfer_type=transfer_type).first()
+                    candidates = []
+                    for ln in transfers.values_list('passenger_last_name', flat=True):
+                        if ln:
+                            dist = levenshtein_distance(last_name, ln.lower())
+                            if 0 < dist <= 3:  # допускаем максимум 3 ошибки
+                                candidates.append((dist, ln))
 
-        return Response({
-            "pickup_time": transfer.departure_time.strftime("%H:%M"),
-            "pickup_point": pickup_point.name if pickup_point else "—",
-            "pickup_lat": pickup_point.latitude if pickup_point else None,
-            "pickup_lng": pickup_point.longitude if pickup_point else None,
-        })
+                    if candidates:
+                        candidates.sort()
+                        best_guess = candidates[0][1]
+                        return Response({
+                            'error': 'No exact match found',
+                            'suggestion': best_guess
+                        }, status=404)
+
+                    # Если вообще ничего похожего — обычная ошибка
+                    return Response({'error': 'No transfer found for this last name'}, status=404)
+
+
+                pickup_point = PickupPoint.objects.filter(hotel=match.hotel, transfer_type=transfer_type).first()
+                return Response({
+                    "pickup_time": match.departure_time.strftime("%H:%M"),
+                    "pickup_point": pickup_point.name if pickup_point else "—",
+                    "pickup_lat": pickup_point.latitude if pickup_point else None,
+                    "pickup_lng": pickup_point.longitude if pickup_point else None,
+                })
+
+            # Без фамилии: если один трансфер — сразу возвращаем
+            if transfers.count() == 1:
+                transfer = transfers.first()
+                pickup_point = PickupPoint.objects.filter(hotel=transfer.hotel, transfer_type=transfer_type).first()
+                return Response({
+                    "pickup_time": transfer.departure_time.strftime("%H:%M"),
+                    "pickup_point": pickup_point.name if pickup_point else "—",
+                    "pickup_lat": pickup_point.latitude if pickup_point else None,
+                    "pickup_lng": pickup_point.longitude if pickup_point else None,
+                })
+
+            # ⚠️ Несколько трансферов — отдаём массив (frontend уже ждёт это!)
+            results = []
+            for t in transfers:
+                pickup_point = PickupPoint.objects.filter(hotel=t.hotel, transfer_type=transfer_type).first()
+                results.append({
+                    "pickup_time": t.departure_time.strftime("%H:%M"),
+                    "pickup_point": pickup_point.name if pickup_point else "—",
+                    "pickup_lat": pickup_point.latitude if pickup_point else None,
+                    "pickup_lng": pickup_point.longitude if pickup_point else None,
+                    "passenger_last_name": t.passenger_last_name or ""
+                })
+            return Response(results)
+
+        else:
+            # Групповой трансфер
+            transfer = transfers.first()
+            pickup_point = PickupPoint.objects.filter(hotel=transfer.hotel, transfer_type=transfer_type).first()
+            return Response({
+                "pickup_time": transfer.departure_time.strftime("%H:%M"),
+                "pickup_point": pickup_point.name if pickup_point else "—",
+                "pickup_lat": pickup_point.latitude if pickup_point else None,
+                "pickup_lng": pickup_point.longitude if pickup_point else None,
+            })
 
     except Exception as e:
         return Response({"error": str(e)}, status=500)
+
+
 
 @api_view(['GET'])
 def available_hotels_for_transfer(request):
@@ -262,6 +325,29 @@ class TransferNotificationViewSet(viewsets.ViewSet):
             return Response({"detail": _("Информация отправлена на почту.")}, status=201)
         return Response(serializer.errors, status=400)
         
+# Вьюшка обратной связи по индивидуальтным трансферам
+class TransferInquiryViewSet(viewsets.ModelViewSet):
+    queryset = TransferInquiry.objects.all()
+    serializer_class = TransferInquirySerializer
+    http_method_names = ['post']  # только POST для внешнего доступа
+
+    def perform_create(self, serializer):
+        inquiry = serializer.save()
+        # Отправка подтверждения туристу
+        send_mail(
+            subject="Ваш запрос принят",
+            message=(
+                f"Уважаемый(ая) {inquiry.last_name},\n\n"
+                f"Мы получили ваш запрос по трансферу.\n"
+                f"Дата: {inquiry.departure_date}\n"
+                f"Отель: {inquiry.hotel.name if inquiry.hotel else '—'}\n"
+                f"Номер рейса: {inquiry.flight_number or '—'}\n\n"
+                f"Мы свяжемся с вами в ближайшее время."
+            ),
+            from_email="info@costasolinfo.com",
+            recipient_list=[inquiry.email],
+        )
+
 
 class QuestionView(RetrieveAPIView):
     queryset = Question.objects.all()

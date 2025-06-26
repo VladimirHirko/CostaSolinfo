@@ -16,6 +16,18 @@ const AirportTransferGroupPage = () => {
   const [pickupTime, setPickupTime] = useState('');
   const [pickupPoint, setPickupPoint] = useState('');
   const [pickupCoords, setPickupCoords] = useState(null);
+
+  const [showInquiryForm, setShowInquiryForm] = useState(false);
+  const [inquiryLastName, setInquiryLastName] = useState('');
+  const [inquiryHotel, setInquiryHotel] = useState('');
+  const [inquiryDate, setInquiryDate] = useState(null);
+  const [inquiryFlight, setInquiryFlight] = useState('');
+  const [inquiryMessage, setInquiryMessage] = useState('');
+  const [inquiryEmail, setInquiryEmail] = useState('');
+  const [inquirySuccessMessage, setInquirySuccessMessage] = useState('');
+  const [inquiryError, setInquiryError] = useState('');
+
+
   const [email, setEmail] = useState('');
   const [checkboxAccepted, setCheckboxAccepted] = useState(false);
   const [emailSentMessage, setEmailSentMessage] = useState('');
@@ -72,10 +84,19 @@ const AirportTransferGroupPage = () => {
         setPickupPoint(data.pickup_point || '');
         setPickupCoords({ lat: data.pickup_lat, lng: data.pickup_lng });
         setError('');
+        setShowInquiryForm(false);  // сбрасываем форму
       } else {
         setPickupTime('');
         setPickupPoint('');
         setPickupCoords(null);
+        if (
+          data.error === 'No transfer schedule found' ||
+          data.error === 'No transfer found'
+        ) {
+          setShowInquiryForm(true);
+        }
+
+
         setError(data.error || t('something_went_wrong'));
       }
     } catch (err) {
@@ -83,6 +104,56 @@ const AirportTransferGroupPage = () => {
       setError(t('something_went_wrong'));
     }
   };
+
+  const handleInquirySubmit = async (e) => {
+    e.preventDefault();
+
+    if (!inquiryLastName || !inquiryHotel || !inquiryDate || !inquiryEmail) {
+      setError(t('please_fill_all_fields'));
+      return;
+    }
+
+    try {
+      const localDate = new Date(inquiryDate.getTime() - inquiryDate.getTimezoneOffset() * 60000);
+      const dateStr = localDate.toISOString().split('T')[0];
+
+      const response = await fetch('http://localhost:8000/api/transfer-inquiries/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          last_name: inquiryLastName.trim(),
+          hotel_name: inquiryHotel.trim(),
+          departure_date: dateStr,
+          flight_number: inquiryFlight.trim(),
+          message: inquiryMessage.trim(),
+          email: inquiryEmail.trim(),
+        }),
+      });
+
+      if (response.ok) {
+        setInquirySuccessMessage(t('request_sent_successfully'));
+
+        setInquiryLastName('');
+        setInquiryHotel('');
+        setInquiryDate(null);
+        setInquiryFlight('');
+        setInquiryMessage('');
+        setInquiryEmail('');
+        setError('');
+        setShowInquiryForm(false);
+      } else {
+        const data = await response.json();
+        console.error('Ошибка запроса:', data);
+        setError(t('request_error'));
+      }
+    } catch (err) {
+      console.error('Ошибка соединения:', err);
+      setError(t('request_error'));
+    }
+  };
+
 
   // Отправка писем об изменении трансфера и их подписки
   const handleEmailSubmit = async () => {
@@ -171,6 +242,67 @@ const AirportTransferGroupPage = () => {
       {/* 🔹 Ошибка */}
       {error && <p className="error-message">{error}</p>}
 
+      {showInquiryForm && (
+        <form onSubmit={handleInquirySubmit} className="transfer-form left-aligned" style={{ marginTop: '20px' }}>
+          <label>{t('your_last_name')}</label>
+          <input
+            type="text"
+            value={inquiryLastName}
+            onChange={(e) => setInquiryLastName(e.target.value)}
+            className="transfer-input"
+          />
+
+          <label>{t('your_hotel')}</label>
+          <input
+            type="text"
+            value={inquiryHotel}
+            onChange={(e) => setInquiryHotel(e.target.value)}
+            className="transfer-input"
+          />
+
+          <label>{t('departure_date')}</label>
+          <DatePicker
+            selected={inquiryDate}
+            onChange={(date) => setInquiryDate(date)}
+            placeholderText={t('select_date')}
+            className="transfer-input"
+            dateFormat="yyyy-MM-dd"
+          />
+
+          <label>{t('flight_number')}</label>
+          <input
+            type="text"
+            value={inquiryFlight}
+            onChange={(e) => setInquiryFlight(e.target.value)}
+            className="transfer-input"
+          />
+
+          <label>{t('question')}</label>
+          <textarea
+            value={inquiryMessage}
+            onChange={(e) => setInquiryMessage(e.target.value)}
+            className="transfer-input"
+          />
+
+          <label>{t('your_email')}</label>
+          <input
+            type="email"
+            value={inquiryEmail}
+            onChange={(e) => setInquiryEmail(e.target.value)}
+            className="transfer-input"
+          />
+
+          <button className="transfer-button" style={{ marginTop: '15px' }}>
+            {t('send_request')}
+          </button>
+        </form>
+      )}
+
+      {inquirySuccessMessage && !pickupTime && (
+        <p style={{ marginTop: '15px', color: 'green' }}>{inquirySuccessMessage}</p>
+      )}
+
+
       {/* 🔹 Результат */}
       {pickupTime && (
         <div className="transfer-result">
@@ -188,6 +320,73 @@ const AirportTransferGroupPage = () => {
               />
             </div>
           )}
+
+          {showInquiryForm && (
+            <form onSubmit={handleInquirySubmit} className="transfer-form left-aligned" style={{ marginTop: '30px' }}>
+              <h3>{t('no_transfer_found_contact')}</h3>
+
+              <label>{t('your_last_name')}</label>
+              <input
+                type="text"
+                value={inquiryLastName}
+                onChange={(e) => setInquiryLastName(e.target.value)}
+                className="transfer-input"
+              />
+
+              <label>{t('your_hotel')}</label>
+              <input
+                type="text"
+                value={inquiryHotel}
+                onChange={(e) => setInquiryHotel(e.target.value)}
+                className="transfer-input"
+              />
+
+              <label>{t('departure_date')}</label>
+              <DatePicker
+                selected={inquiryDate}
+                onChange={(date) => setInquiryDate(date)}
+                placeholderText={t('select_date')}
+                className="transfer-input"
+                dateFormat="yyyy-MM-dd"
+              />
+
+              <label>{t('flight_number')}</label>
+              <input
+                type="text"
+                value={inquiryFlight}
+                onChange={(e) => setInquiryFlight(e.target.value)}
+                className="transfer-input"
+              />
+
+              <label>{t('question')}</label>
+              <textarea
+                value={inquiryMessage}
+                onChange={(e) => setInquiryMessage(e.target.value)}
+                className="transfer-input"
+              />
+
+              <label>{t('your_email')}</label>
+              <input
+                type="email"
+                value={inquiryEmail}
+                onChange={(e) => setInquiryEmail(e.target.value)}
+                className="transfer-input"
+              />
+
+              <button className="transfer-button" style={{ marginTop: '15px' }}>
+                {t('send_request')}
+              </button>
+            </form>
+          )}
+
+          {inquirySuccessMessage && (
+            <p style={{ marginTop: '15px', color: 'green' }}>{inquirySuccessMessage}</p>
+          )}
+          {inquiryError && (
+            <p style={{ marginTop: '15px', color: 'red' }}>{inquiryError}</p>
+          )}
+
+
           {/* 🔹 Форма для email */}
           {pickupTime && (
             <div className="email-subscription" style={{ marginTop: '30px' }}>

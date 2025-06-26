@@ -1,7 +1,7 @@
 from core.models import (
     Homepage, Excursion, InfoMeeting, AirportTransfer, 
     Question, ContactInfo, AboutUs, TransferSchedule,
-    Hotel, PickupPoint, TransferNotification
+    Hotel, PickupPoint, TransferNotification, TransferInquiry
     )
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -74,6 +74,15 @@ class TransferNotificationCreateSerializer(serializers.ModelSerializer):
             language=validated_data.get('language', 'ru'),
         )
         return instance
+
+# Обратная связь по индивидуальному трансферу
+class TransferInquirySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TransferInquiry
+        fields = '__all__'
+
+
+
 
 
 class HotelSerializer(serializers.ModelSerializer):

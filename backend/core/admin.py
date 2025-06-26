@@ -8,7 +8,8 @@ from .models import (
     Homepage, InfoMeeting, AirportTransfer,
     Question, ContactInfo, AboutUs, TransferSchedule,
     Region, PageBanner, GroupTransferPickupPoint, PrivateTransferPickupPoint,
-    TransferSchedule, TransferScheduleGroup, TransferNotification
+    TransferSchedule, TransferScheduleGroup, TransferNotification,
+    TransferInquiry
 )
 from django.urls import path
 from django.utils.safestring import mark_safe
@@ -368,3 +369,11 @@ class TransferNotificationAdmin(admin.ModelAdmin):
     list_display = ('email', 'hotel', 'departure_date', 'transfer_type', 'language')
     list_filter = ('transfer_type', 'departure_date', 'hotel', 'language')
     search_fields = ('email',)
+
+# Админка обратной связи с туристом по индивидуальному трансферу
+@admin.register(TransferInquiry)
+class TransferInquiryAdmin(admin.ModelAdmin):
+    list_display = ['last_name', 'hotel', 'departure_date', 'email', 'created_at']
+    list_filter = ['departure_date', 'hotel']
+    search_fields = ['last_name', 'email', 'flight_number']
+
