@@ -39,22 +39,58 @@
   display: none;
 }
 
-/* Языковой блок */
+/* Обёртка языка */
 .lang-wrapper {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
+  position: relative;
+  transition: transform 0.3s ease;
 }
 
-/* Селектор языка */
-.lang-selector {
-  padding: 4px 6px;
-  font-weight: bold;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background: white;
-  cursor: pointer;
+/* Иконка 🌐 */
+.lang-label {
+  font-size: 18px;
+  color: #007BFF;
+  transition: transform 0.3s ease;
 }
+
+/* Выпадающий язык */
+.lang-selector {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 14px;
+  background-color: white;
+  cursor: pointer;
+  appearance: none;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Синий фокус при выборе */
+.lang-selector:focus {
+  outline: none;
+  border: 2px solid #007BFF;
+  box-shadow: 0 0 6px rgba(0, 123, 255, 0.3);
+  transform: scale(1.03);
+}
+
+/* Добавим стрелку ▼ к селектору */
+.lang-selector {
+  background-image: url("data:image/svg+xml;utf8,<svg fill='black' height='12' viewBox='0 0 24 24' width='12' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 12px;
+  padding-right: 25px;
+}
+
+@media (max-width: 768px) {
+  .lang-selector {
+    width: 100%;
+    margin-top: 10px;
+  }
+}
+
 
 /* Ссылки меню */
 .navbar-links {
@@ -132,3 +168,4 @@
   .navbar-links.active a:nth-child(6) { transition-delay: 0.30s; }
   .navbar-links.active a:nth-child(7) { transition-delay: 0.35s; }
 }
+

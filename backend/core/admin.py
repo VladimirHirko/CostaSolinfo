@@ -1,15 +1,17 @@
 from django.contrib import admin, messages
+from django.core.mail import EmailMultiAlternatives
 from django.shortcuts import render, redirect
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.template.response import TemplateResponse
+from django.template.loader import render_to_string
 from .models import (
     Hotel, Excursion, PickupPoint,
     Homepage, InfoMeeting, AirportTransfer,
     Question, ContactInfo, AboutUs, TransferSchedule,
     Region, PageBanner, GroupTransferPickupPoint, PrivateTransferPickupPoint,
     TransferSchedule, TransferScheduleGroup, TransferNotification,
-    TransferInquiry
+    TransferInquiry, TransferInquiryLog
 )
 from django.urls import path
 from django.utils.safestring import mark_safe
@@ -370,10 +372,67 @@ class TransferNotificationAdmin(admin.ModelAdmin):
     list_filter = ('transfer_type', 'departure_date', 'hotel', 'language')
     search_fields = ('email',)
 
-# Админка обратной связи с туристом по индивидуальному трансферу
+@admin.register(TransferInquiryLog)
+class TransferInquiryLogAdmin(admin.ModelAdmin):
+    list_display = ['inquiry', 'email', 'sent_at']
+    search_fields = ['email', 'reply_content']
+    list_filter = ['sent_at']
+
+class TransferInquiryLogInline(admin.TabularInline):
+    model = TransferInquiryLog
+    extra = 0
+    readonly_fields = ['email', 'reply_content', 'sent_at']
+    can_delete = False
+
 @admin.register(TransferInquiry)
 class TransferInquiryAdmin(admin.ModelAdmin):
     list_display = ['last_name', 'hotel', 'departure_date', 'email', 'created_at']
     list_filter = ['departure_date', 'hotel']
     search_fields = ['last_name', 'email', 'flight_number']
+    readonly_fields = ['replied']
+    actions = ['send_reply_email']
+
+    def send_reply_email(self, request, queryset):
+        for inquiry in queryset:
+            if inquiry.reply and not inquiry.replied:
+                self._send_email(inquiry)
+        self.message_user(request, "Ответы успешно отправлены.")
+
+    send_reply_email.short_description = "Отправить ответы туристам"
+
+    def save_model(self, request, obj, form, change):
+        if 'reply' in form.changed_data and obj.reply and not obj.replied:
+            self._send_email(obj)
+        super().save_model(request, obj, form, change)
+
+    def _send_email(self, inquiry):
+        subject = "Ответ на ваш запрос по трансферу"
+        from_email = "info@costasolinfo.com"
+        to_email = [inquiry.email]
+
+        context = {
+            'name': inquiry.last_name,
+            'reply': inquiry.reply,
+            'hotel': inquiry.hotel.name if inquiry.hotel else '',
+            'date': inquiry.departure_date,
+            'flight': inquiry.flight_number,
+        }
+
+        html_content = render_to_string("emails/transfer_reply.html", context)
+        text_content = inquiry.reply
+
+        email = EmailMultiAlternatives(subject, text_content, from_email, to_email)
+        email.attach_alternative(html_content, "text/html")
+        email.send()
+
+        # Обновить флаг
+        inquiry.replied = True
+        inquiry.save()
+
+        # Лог
+        TransferInquiryLog.objects.create(
+            inquiry=inquiry,
+            email=inquiry.email,
+            reply_content=inquiry.reply
+        )
 

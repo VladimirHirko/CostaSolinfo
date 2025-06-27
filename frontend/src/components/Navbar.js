@@ -11,7 +11,8 @@ function Navbar() {
   const handleLanguageChange = (event) => i18n.changeLanguage(event.target.value);
 
   return (
-    <nav className="navbar">
+    <nav className={`navbar ${isOpen ? 'active' : ''}`}>
+
       <div className="navbar-brand">
         <span className="brand-logo">CostaSolinfo</span>
 

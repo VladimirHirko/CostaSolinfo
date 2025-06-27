@@ -95,6 +95,13 @@ body {
   border-radius: 8px;
   border: 1px solid #ccc;
   box-sizing: border-box;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.transfer-input:focus {
+  outline: none;
+  border: 2px solid #007BFF; /* Ярко-синий */
+  box-shadow: 0 0 6px rgba(0, 123, 255, 0.5);
 }
 
 .transfer-result {
@@ -140,3 +147,55 @@ body {
   background-color: #f0f0f0;
 }
 
+/* Стили предупреждения что трансфер не найден */
+.transfer-warning-box {
+  border: 2px solid #ff4d4f;
+  background-color: #fff1f0;
+  color: #cf1322;
+  padding: 15px;
+  border-radius: 8px;
+  font-weight: bold;
+  max-width: 600px;
+  margin: 20px auto;
+  text-align: center;
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Стиль об успешной отправке запроса по трансферу */
+.success-message-box {
+  border: 2px solid #4CAF50;         /* Зелёная рамка */
+  background-color: #eafaf1;         /* Светлый фон */
+  color: #2e7d32;                    /* Зелёный текст */
+  padding: 15px;
+  margin-top: 20px;
+  border-radius: 8px;
+  font-size: 16px;
+  text-align: center;
+  animation: fadeIn 0.4s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Анимация открытия формы */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.inquiry-form-animated {
+  animation: fadeIn 0.4s ease-in-out;
+}

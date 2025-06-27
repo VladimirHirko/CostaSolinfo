@@ -257,6 +257,13 @@ class Hotel(models.Model):
         verbose_name = "Отель"
         verbose_name_plural = "Отели"
 
+class TransferScheduleItem(models.Model):
+    group = models.ForeignKey('TransferScheduleGroup', on_delete=models.CASCADE)
+    hotel = models.ForeignKey(Hotel, on_delete=models.CASCADE)
+    time = models.TimeField()
+    pickup_point = models.CharField(max_length=255, blank=True)
+    tourist_last_name = models.CharField(max_length=100, blank=True)
+
 # Модель формы обратной связи если фамилия не найдена на индивидуальном трансфере
 class TransferInquiry(models.Model):
     last_name = models.CharField(max_length=100)
@@ -267,8 +274,26 @@ class TransferInquiry(models.Model):
     email = models.EmailField()
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # Новое поле:
+    reply = models.TextField(blank=True, verbose_name="Ответ админа")
+
+    # метка — было ли письмо отправлено
+    replied = models.BooleanField(default=False)
+
     def __str__(self):
         return f"{self.last_name} — {self.departure_date}"
+
+# Модель сохранения логов отправки песием по трансферам.
+class TransferInquiryLog(models.Model):
+    inquiry = models.ForeignKey(TransferInquiry, on_delete=models.CASCADE, related_name='logs')
+    email = models.EmailField()
+    reply_content = models.TextField()
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Log for {self.email} at {self.sent_at.strftime('%Y-%m-%d %H:%M')}"
+
+
 
 # Модель точки сбора 
 class PickupPoint(models.Model):

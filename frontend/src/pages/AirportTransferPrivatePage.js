@@ -31,6 +31,9 @@ const AirportTransferPrivatePage = () => {
   const [inquiryMessage, setInquiryMessage] = useState('');
   const [inquiryEmail, setInquiryEmail] = useState('');
   const [inquirySuccessMessage, setInquirySuccessMessage] = useState('');
+  const [inquiryHotelSuggestions, setInquiryHotelSuggestions] = useState([]);
+  const [inquiryHotelId, setInquiryHotelId] = useState(null);
+  const [inquirySuggestionsVisible, setInquirySuggestionsVisible] = useState(false);
 
   const [error, setError] = useState('');
 
@@ -157,7 +160,7 @@ const AirportTransferPrivatePage = () => {
         },
         body: JSON.stringify({
           last_name: inquiryLastName.trim(),
-          hotel_name: inquiryHotel.trim(),
+          hotel: inquiryHotelId,
           departure_date: dateStr,
           flight_number: inquiryFlight.trim(),
           message: inquiryMessage.trim(),
@@ -185,6 +188,29 @@ const AirportTransferPrivatePage = () => {
       console.error('Ошибка соединения:', err);
       setError(t('request_error'));
     }
+  };
+
+  useEffect(() => {
+    if (inquiryHotel.length >= 2) {
+      fetch(`http://localhost:8000/api/hotels/?search=${inquiryHotel}`)
+        .then((res) => res.json())
+        .then((data) => {
+          setInquiryHotelSuggestions(data);
+          setInquirySuggestionsVisible(true);
+        })
+        .catch((err) => console.error('Ошибка загрузки отелей для запроса:', err));
+    } else {
+      setInquiryHotelSuggestions([]);
+      setInquirySuggestionsVisible(false);
+    }
+  }, [inquiryHotel]);
+
+  const handleSelectInquiryHotel = (name, id) => {
+    setInquiryHotel(name);
+    setInquiryHotelId(id);
+    setInquiryHotelSuggestions([]);
+    setInquirySuggestionsVisible(false);
+    setTimeout(() => document.activeElement.blur(), 0);
   };
 
 
@@ -266,7 +292,12 @@ const AirportTransferPrivatePage = () => {
         </button>
       </form>
 
-      {error && <p className="error-message">{error}</p>}
+      {error && (
+        <div className="transfer-warning-box">
+          {t('no_transfer_found_message')}
+        </div>
+      )}
+
 
       {needLastName && (
         <div className="transfer-form left-aligned" style={{ marginTop: '20px' }}>
@@ -302,7 +333,11 @@ const AirportTransferPrivatePage = () => {
       )}
 
       {showInquiryForm && (
-        <form onSubmit={handleInquirySubmit} className="transfer-form left-aligned" style={{ marginTop: '20px' }}>
+        <form
+          onSubmit={handleInquirySubmit}
+          className="transfer-form left-aligned inquiry-form-animated"
+          style={{ marginTop: '20px' }}
+        >
           <label>{t('your_last_name')}</label>
           <input
             type="text"
@@ -312,12 +347,25 @@ const AirportTransferPrivatePage = () => {
           />
 
           <label>{t('your_hotel')}</label>
-          <input
-            type="text"
-            value={inquiryHotel}
-            onChange={(e) => setInquiryHotel(e.target.value)}
-            className="transfer-input"
-          />
+          <div className="autocomplete-wrapper">
+            <input
+              type="text"
+              value={inquiryHotel}
+              onChange={(e) => setInquiryHotel(e.target.value)}
+              placeholder={t('your_hotel')}
+              className="transfer-input"
+            />
+            {inquiryHotelSuggestions.length > 0 && !inquiryHotelSuggestions.some(h => h.name === inquiryHotel) && (
+              <ul className="autocomplete-list">
+                {inquiryHotelSuggestions.map((item) => (
+                  <li key={item.id} onMouseDown={() => handleSelectInquiryHotel(item.name, item.id)}>
+                    {item.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
 
           <label>{t('departure_date')}</label>
           <DatePicker
@@ -358,9 +406,10 @@ const AirportTransferPrivatePage = () => {
       )}
 
       {inquirySuccessMessage && !pickupTime && (
-        <p style={{ marginTop: '15px', color: 'green' }}>{inquirySuccessMessage}</p>
+        <div className="success-message-box">
+          {inquirySuccessMessage}
+        </div>
       )}
-
 
 
       {pickupTime && (
