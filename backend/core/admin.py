@@ -1,5 +1,5 @@
 from django.contrib import admin, messages
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives, send_mail
 from django.shortcuts import render, redirect
 from django.http import HttpResponseRedirect
 from django.urls import reverse
@@ -11,11 +11,12 @@ from .models import (
     Question, ContactInfo, AboutUs, TransferSchedule,
     Region, PageBanner, GroupTransferPickupPoint, PrivateTransferPickupPoint,
     TransferSchedule, TransferScheduleGroup, TransferNotification,
-    TransferInquiry, TransferInquiryLog
+    TransferInquiry, TransferInquiryLog, TransferScheduleItem
 )
 from django.urls import path
 from django.utils.safestring import mark_safe
 from django.utils.html import format_html
+from django.utils.timezone import now
 from .forms import ExcursionAdminForm, BulkTransferScheduleForm
 
 # Баннеры на старницах
@@ -343,27 +344,59 @@ class TransferScheduleInline(admin.TabularInline):
     fields = ('hotel', 'departure_time', 'pickup_point', 'passenger_last_name')
     show_change_link = True
 
+class TransferScheduleItemInline(admin.TabularInline):
+    model = TransferSchedule
+    extra = 1  # сколько пустых строк по умолчанию
+    autocomplete_fields = ['hotel', 'pickup_point']
+    fields = ('hotel', 'departure_time', 'pickup_point', 'passenger_last_name')
+    show_change_link = True
     
 
 # Админка для TransferScheduleGroup  
 @admin.register(TransferScheduleGroup)
 class TransferScheduleGroupAdmin(admin.ModelAdmin):
-    inlines = [TransferScheduleInline]
-    list_display = ['date', 'transfer_type']
-
-    def save_model(self, request, obj, form, change):
-        # Сохраняем саму группу (TransferScheduleGroup)
-        super().save_model(request, obj, form, change)
+    inlines = [TransferScheduleItemInline]
 
     def save_formset(self, request, form, formset, change):
-        # Здесь formset — один из inlines (TransferScheduleInline)
         instances = formset.save(commit=False)
+
         for instance in instances:
-            instance.group = form.instance  # Привязка к текущей группе
-            instance.departure_date = form.instance.date  # Копируем дату из группы
-            instance.transfer_type = form.instance.transfer_type  # Копируем тип трансфера
-            instance.save()
+            old_time = None
+
+            if instance.pk:
+                try:
+                    old = TransferScheduleItem.objects.get(pk=instance.pk)
+                    old_time = old.time
+                except TransferScheduleItem.DoesNotExist:
+                    pass  # объект ещё не существовал — просто пропускаем
+
+            instance.save()  # обязательно сохранить перед отправкой уведомлений
+
+            # Отправляем уведомления только если время изменилось
+            if old_time and old_time != instance.time:
+                notifications = TransferNotification.objects.filter(
+                    hotel=instance.hotel,
+                    departure_date=instance.group.date,
+                    transfer_type=instance.group.transfer_type,
+                )
+
+                for notif in notifications:
+                    send_mail(
+                        subject="Изменение времени трансфера",
+                        message=(
+                            f"Уважаемый(ая),\n\n"
+                            f"Время вашего трансфера из отеля {instance.hotel.name} "
+                            f"на {instance.group.date.strftime('%d.%m.%Y')} было изменено.\n"
+                            f"Новое время выезда: {instance.time.strftime('%H:%M')}.\n\n"
+                            f"С уважением,\nКоманда CostaSolinfo"
+                        ),
+                        from_email="CostaSolinfo.Malaga@gmail.com",
+                        recipient_list=[notif.email],
+                        fail_silently=False
+                    )
+
         formset.save_m2m()
+
 
 # Админка для нотификаций по трансферам
 @admin.register(TransferNotification)

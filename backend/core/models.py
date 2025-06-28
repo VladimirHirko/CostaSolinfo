@@ -128,29 +128,6 @@ class TransferScheduleGroup(models.Model):
     def __str__(self):
         return f"{self.get_transfer_type_display()} — {self.date}"
 
-# Отправка писемь о трансферах подписчикам
-class TransferNotification(models.Model):
-    TRANSFER_TYPE_CHOICES = [
-        ('group', _('Group Transfer')),
-        ('private', _('Private Transfer')),
-    ]
-
-    email = models.EmailField(_("Email"))
-    hotel = models.ForeignKey('Hotel', on_delete=models.CASCADE, verbose_name=_("Hotel"))
-    transfer_type = models.CharField(max_length=10, choices=TRANSFER_TYPE_CHOICES, verbose_name=_("Transfer Type"))
-    transfer_date = models.DateField(verbose_name=_("Transfer Date"))
-    language = models.CharField(max_length=10, choices=settings.LANGUAGES, default='ru', verbose_name=_("Language"))
-    created_at = models.DateTimeField(auto_now_add=True)
-    notified = models.BooleanField(default=False)
-
-    class Meta:
-        unique_together = ('email', 'hotel', 'transfer_type', 'transfer_date')
-        verbose_name = _("Transfer Notification")
-        verbose_name_plural = _("Transfer Notifications")
-
-    def __str__(self):
-        return f"{self.email} - {self.hotel.name} - {self.transfer_date} ({self.transfer_type})"
-
 # Модель для подписки TransferNotification
 class TransferNotification(models.Model):
     email = models.EmailField(verbose_name=_("Email"))
@@ -168,6 +145,10 @@ class TransferNotification(models.Model):
         verbose_name=_("Language")
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    departure_time_sent = models.TimeField(
+        null=True, blank=True,
+        verbose_name=_("Sent Departure Time")
+    )
 
     class Meta:
         verbose_name = _("Transfer Notification")
@@ -175,6 +156,7 @@ class TransferNotification(models.Model):
 
     def __str__(self):
         return f"{self.email} ({self.hotel}) {self.departure_date} [{self.transfer_type}]"
+
 
 
 

@@ -193,63 +193,63 @@ def transfer_schedule_view(request):
             return Response({'error': 'No transfer schedule found'}, status=404)
 
         if transfer_type == 'private':
-            # Если фамилия указана — ищем по ней
+            from Levenshtein import distance as levenshtein_distance
+
+            # 🔍 Если указана фамилия — ищем совпадение
             if last_name:
                 match = transfers.filter(passenger_last_name__iexact=last_name).first()
-                if not match:
-                    # 🔍 Попробуем найти ближайшую фамилию по смыслу
-                    from Levenshtein import distance as levenshtein_distance
+                if match:
+                    pickup_point = PickupPoint.objects.filter(hotel=match.hotel, transfer_type=transfer_type).first()
+                    return Response({
+                        "success": True,
+                        "pickup_time": match.departure_time.strftime("%H:%M"),
+                        "pickup_point": pickup_point.name if pickup_point else "—",
+                        "pickup_lat": pickup_point.latitude if pickup_point else None,
+                        "pickup_lng": pickup_point.longitude if pickup_point else None,
+                    })
 
-                    candidates = []
-                    for ln in transfers.values_list('passenger_last_name', flat=True):
-                        if ln:
-                            dist = levenshtein_distance(last_name, ln.lower())
-                            if 0 < dist <= 3:  # допускаем максимум 3 ошибки
-                                candidates.append((dist, ln))
+                # ❌ Не найдено — ищем похожие фамилии
+                candidates = []
+                for ln in transfers.values_list('passenger_last_name', flat=True):
+                    if ln:
+                        dist = levenshtein_distance(last_name.lower(), ln.lower())
+                        if 0 < dist <= 3:
+                            candidates.append((dist, ln))
 
-                    if candidates:
-                        candidates.sort()
-                        best_guess = candidates[0][1]
-                        return Response({
-                            'error': 'No exact match found',
-                            'suggestion': best_guess
-                        }, status=404)
+                if candidates:
+                    candidates.sort()
+                    best_guess = candidates[0][1]
+                    return Response({
+                        "success": False,
+                        "reason": "no_exact_match",
+                        "suggestion": best_guess
+                    }, status=200)
 
-                    # Если вообще ничего похожего — обычная ошибка
-                    return Response({'error': 'No transfer found for this last name'}, status=404)
-
-
-                pickup_point = PickupPoint.objects.filter(hotel=match.hotel, transfer_type=transfer_type).first()
                 return Response({
-                    "pickup_time": match.departure_time.strftime("%H:%M"),
-                    "pickup_point": pickup_point.name if pickup_point else "—",
-                    "pickup_lat": pickup_point.latitude if pickup_point else None,
-                    "pickup_lng": pickup_point.longitude if pickup_point else None,
-                })
+                    "success": False,
+                    "reason": "not_found",
+                    "message": "Фамилия не найдена. Проверьте правильность написания."
+                }, status=200)
 
-            # Без фамилии: если один трансфер — сразу возвращаем
-            if transfers.count() == 1:
-                transfer = transfers.first()
-                pickup_point = PickupPoint.objects.filter(hotel=transfer.hotel, transfer_type=transfer_type).first()
+            # ⛔ Фамилия не указана, но несколько трансферов
+            if transfers.count() > 1:
                 return Response({
-                    "pickup_time": transfer.departure_time.strftime("%H:%M"),
-                    "pickup_point": pickup_point.name if pickup_point else "—",
-                    "pickup_lat": pickup_point.latitude if pickup_point else None,
-                    "pickup_lng": pickup_point.longitude if pickup_point else None,
-                })
+                    "success": False,
+                    "reason": "multiple_transfers",
+                    "message": "На данную дату из этого отеля выезжает несколько семей. Уточните фамилию."
+                }, status=200)
 
-            # ⚠️ Несколько трансферов — отдаём массив (frontend уже ждёт это!)
-            results = []
-            for t in transfers:
-                pickup_point = PickupPoint.objects.filter(hotel=t.hotel, transfer_type=transfer_type).first()
-                results.append({
-                    "pickup_time": t.departure_time.strftime("%H:%M"),
-                    "pickup_point": pickup_point.name if pickup_point else "—",
-                    "pickup_lat": pickup_point.latitude if pickup_point else None,
-                    "pickup_lng": pickup_point.longitude if pickup_point else None,
-                    "passenger_last_name": t.passenger_last_name or ""
-                })
-            return Response(results)
+            # ✅ Только один трансфер — можно отдать сразу
+            transfer = transfers.first()
+            pickup_point = PickupPoint.objects.filter(hotel=transfer.hotel, transfer_type=transfer_type).first()
+            return Response({
+                "success": True,
+                "pickup_time": transfer.departure_time.strftime("%H:%M"),
+                "pickup_point": pickup_point.name if pickup_point else "—",
+                "pickup_lat": pickup_point.latitude if pickup_point else None,
+                "pickup_lng": pickup_point.longitude if pickup_point else None,
+            })
+
 
         else:
             # Групповой трансфер

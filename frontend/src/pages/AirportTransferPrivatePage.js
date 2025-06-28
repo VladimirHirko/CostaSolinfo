@@ -8,6 +8,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 
 const AirportTransferPrivatePage = () => {
   const { t } = useTranslation();
+
   const [hotel, setHotel] = useState('');
   const [hotelId, setHotelId] = useState(null);
   const [hotelSuggestions, setHotelSuggestions] = useState([]);
@@ -23,7 +24,6 @@ const AirportTransferPrivatePage = () => {
   const [email, setEmail] = useState('');
   const [checkboxAccepted, setCheckboxAccepted] = useState(false);
   const [emailSentMessage, setEmailSentMessage] = useState('');
-
   const [inquiryLastName, setInquiryLastName] = useState('');
   const [inquiryHotel, setInquiryHotel] = useState('');
   const [inquiryDate, setInquiryDate] = useState(null);
@@ -34,7 +34,12 @@ const AirportTransferPrivatePage = () => {
   const [inquiryHotelSuggestions, setInquiryHotelSuggestions] = useState([]);
   const [inquiryHotelId, setInquiryHotelId] = useState(null);
   const [inquirySuggestionsVisible, setInquirySuggestionsVisible] = useState(false);
-
+  const [transferType] = useState('private');
+  const [transferLoading, setTransferLoading] = useState(false);
+  const [transferResult, setTransferResult] = useState(null);
+  const [transferError, setTransferError] = useState('');
+  const [selectedHotel, setSelectedHotel] = useState(null);
+  const [departureDate, setDepartureDate] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -55,6 +60,7 @@ const AirportTransferPrivatePage = () => {
   const handleSelectHotel = (name, id) => {
     setHotel(name);
     setHotelId(id);
+    setSelectedHotel({ id });
     setHotelSuggestions([]);
     setSuggestionsVisible(false);
     setTimeout(() => document.activeElement.blur(), 0);
@@ -69,6 +75,7 @@ const AirportTransferPrivatePage = () => {
 
     const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
     const dateStr = localDate.toISOString().split('T')[0];
+    setDepartureDate(localDate);
 
     let url = `http://localhost:8000/api/transfer-schedule/?hotel_id=${hotelId}&date=${dateStr}&type=private`;
     if (lastName) {
@@ -80,27 +87,43 @@ const AirportTransferPrivatePage = () => {
       const data = await response.json();
 
       if (response.ok) {
-        if (Array.isArray(data) && data.length > 1 && !lastName) {
-          // Нужно уточнение фамилии
-          setTransfers(data);
-          setNeedLastName(true);
-          setPickupTime('');
-          setPickupPoint('');
-          setPickupCoords(null);
-          setError(t('please_enter_last_name'));
-        } else if (Array.isArray(data) && data.length === 1) {
-          const item = data[0];
-          setPickupTime(item.pickup_time || '');
-          setPickupPoint(item.pickup_point || '');
-          setPickupCoords({ lat: item.pickup_lat, lng: item.pickup_lng });
-          setNeedLastName(false);
-          setError('');
-        } else if (!Array.isArray(data)) {
+        if (Array.isArray(data)) {
+          if (data.length > 1 && !lastName) {
+            // Несколько трансферов — просим фамилию
+            setNeedLastName(true);
+            setTransfers(data);
+            setPickupTime('');
+            setPickupPoint('');
+            setPickupCoords(null);
+            setError(t('please_enter_last_name'));
+          } else {
+            // Один трансфер или фамилия уже указана
+            const item = data[0];
+            setPickupTime(item.pickup_time || '');
+            setPickupPoint(item.pickup_point || '');
+            setPickupCoords({ lat: item.pickup_lat, lng: item.pickup_lng });
+            setNeedLastName(false);
+            setError('');
+          }
+        } else if (typeof data === 'object' && data.success) {
+          // Успешный точный результат
           setPickupTime(data.pickup_time || '');
           setPickupPoint(data.pickup_point || '');
           setPickupCoords({ lat: data.pickup_lat, lng: data.pickup_lng });
           setNeedLastName(false);
           setError('');
+        } else if (data.success === false && data.reason === 'multiple_transfers') {
+          setNeedLastName(true);
+          setTransfers([]);
+          setPickupTime('');
+          setPickupPoint('');
+          setPickupCoords(null);
+          setError(t('please_enter_last_name'));
+        } else if (data.success === false && data.reason === 'no_exact_match' && data.suggestion) {
+          setError(`${t('did_you_mean')} "${data.suggestion}"?`);
+        } else if (data.success === false && data.reason === 'not_found') {
+          setError(t('no_transfer_for_lastname'));
+          setShowInquiryForm(true);
         } else {
           setError(t('no_transfer_found'));
           setPickupTime('');
@@ -138,6 +161,7 @@ const AirportTransferPrivatePage = () => {
       setError(t('something_went_wrong'));
     }
   };
+
 
 
 
@@ -213,6 +237,49 @@ const AirportTransferPrivatePage = () => {
     setTimeout(() => document.activeElement.blur(), 0);
   };
 
+  const handleFetchTransfer = async () => {
+    setTransferLoading(true);
+    setTransferResult(null);
+    setTransferError('');
+
+    if (!selectedHotel || !departureDate) {
+      setTransferError(t('please_fill_all_fields'));
+      setTransferLoading(false);
+      return;
+    }
+
+    const params = new URLSearchParams({
+      hotel_id: selectedHotel.id,
+      date: departureDate.toISOString().split('T')[0],
+      type: transferType,
+    });
+
+    if (lastName.trim() !== '') {
+      params.append('last_name', lastName.trim());
+    }
+
+    try {
+      const response = await fetch(`/api/transfer-schedule/?${params.toString()}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.suggestion) {
+          setTransferError(`${t('did_you_mean')}: ${data.suggestion}`);
+        } else if (transferType === 'private' && !lastName) {
+          setTransferError(t('please_enter_last_name'));
+        } else {
+          setTransferError(t('no_transfer_found_message'));
+        }
+      } else {
+        setTransferResult(data);
+      }
+    } catch (error) {
+      console.error("Ошибка при получении трансфера:", error);
+      setTransferError(t('something_went_wrong'));
+    }
+
+    setTransferLoading(false);
+  };
 
 
   const handleEmailSubmit = async () => {
@@ -294,7 +361,7 @@ const AirportTransferPrivatePage = () => {
 
       {error && (
         <div className="transfer-warning-box">
-          {t('no_transfer_found_message')}
+          {error}
         </div>
       )}
 
