@@ -14,6 +14,8 @@ from core.views import (
 
 transfer_notification_view = TransferNotificationViewSet.as_view({'post': 'create'})
 
+
+
 router = DefaultRouter()
 router.register(r'transfer-inquiries', TransferInquiryViewSet, basename='transfer-inquiries')
 

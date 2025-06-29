@@ -8,79 +8,45 @@ from django.conf import settings
 from .models import TransferNotification, TransferSchedule, TransferScheduleItem, TransferInquiry
 #from .emails import send_transfer_change_email
 
-@receiver(post_save, sender=TransferNotification)
-def send_transfer_email_notification(sender, instance, created, **kwargs):
-    if not created:
-        return
-
-    activate(instance.language)
-
-    try:
-        schedule = TransferSchedule.objects.get(
-            hotel=instance.hotel,
-            departure_date=instance.departure_date,
-            transfer_type=instance.transfer_type,
-        )
-    except TransferSchedule.DoesNotExist:
-        return
-
-    pickup_point = schedule.pickup_point
-    pickup_point_name = pickup_point.name if pickup_point else _("не указана")
-    coords = f"{pickup_point.latitude}, {pickup_point.longitude}" if pickup_point else _("не указано")
-    maps_link = f"https://www.google.com/maps?q={pickup_point.latitude},{pickup_point.longitude}" if pickup_point else None
-
-    context = {
-        "departure_time": schedule.departure_time,
-        "pickup_point_name": pickup_point_name,
-        "coords": coords,
-        "maps_link": maps_link,
-    }
-
-    subject = _("Информация о вашем трансфере")
-    html_content = render_to_string("emails/transfer_notification.html", context)
-    text_content = strip_tags(html_content)
-
-    email = EmailMultiAlternatives(subject, text_content, settings.DEFAULT_FROM_EMAIL, [instance.email])
-    email.attach_alternative(html_content, "text/html")
-    email.send()
 
 
-@receiver(pre_save, sender=TransferScheduleItem)
-def notify_time_change(sender, instance, **kwargs):
-    if not instance.pk:
-        return  # новый объект, не сравниваем
 
-    try:
-        old_instance = TransferScheduleItem.objects.get(pk=instance.pk)
-    except TransferScheduleItem.DoesNotExist:
-        return
 
-    if old_instance.time != instance.time:
-        # ищем туриста по фамилии, дате и отелю
-        inquiries = TransferInquiry.objects.filter(
-            hotel=instance.hotel,
-            departure_date=instance.group.date,
-            last_name__iexact=instance.tourist_last_name,
-            replied=True
-        )
+# @receiver(pre_save, sender=TransferScheduleItem)
+# def notify_time_change(sender, instance, **kwargs):
+#     if not instance.pk:
+#         return  # новый объект, не сравниваем
 
-        for inquiry in inquiries:
-            print(f"[INFO] Отправляем уведомление {inquiry.email} об изменении времени")  # временный лог
+#     try:
+#         old_instance = TransferScheduleItem.objects.get(pk=instance.pk)
+#     except TransferScheduleItem.DoesNotExist:
+#         return
 
-            send_mail(
-                subject="Изменение времени трансфера",
-                message=(
-                    f"Уважаемый(ая) {inquiry.last_name},\n\n"
-                    f"Время вашего трансфера из отеля {instance.hotel.name} "
-                    f"на {instance.group.date.strftime('%d.%m.%Y')} было изменено.\n"
-                    f"Новое время выезда: {instance.time.strftime('%H:%M')}.\n\n"
-                    f"С уважением,\nКоманда CostaSolinfo"
-                ),
-                from_email="CostaSolinfo.Malaga@gmail.com",
-                recipient_list=[inquiry.email],
-                fail_silently=False
-            )
+#     if instance.time and old_instance.time != instance.time:
+#         # ищем туриста по фамилии, дате и отелю
+#         inquiries = TransferInquiry.objects.filter(
+#             hotel=instance.hotel,
+#             departure_date=instance.group.date,
+#             last_name__iexact=instance.tourist_last_name,
+#             replied=True
+#         )
 
+#         for inquiry in inquiries:
+#             print(f"[INFO] Отправляем уведомление {inquiry.email} об изменении времени")  # временный лог
+
+#             send_mail(
+#                 subject="Изменение времени трансфера",
+#                 message=(
+#                     f"Уважаемый(ая) {inquiry.last_name},\n\n"
+#                     f"Время вашего трансфера из отеля {instance.hotel.name} "
+#                     f"на {instance.group.date.strftime('%d.%m.%Y')} было изменено.\n"
+#                     f"Новое время выезда: {instance.time.strftime('%H:%M')}.\n\n"
+#                     f"С уважением,\nКоманда CostaSolinfo"
+#                 ),
+#                 from_email="CostaSolinfo.Malaga@gmail.com",
+#                 recipient_list=[inquiry.email],
+#                 fail_silently=False
+#             )
 
 @receiver(pre_save, sender=TransferScheduleItem)
 def notify_transfer_notification_change(sender, instance, **kwargs):
@@ -92,38 +58,116 @@ def notify_transfer_notification_change(sender, instance, **kwargs):
     except TransferScheduleItem.DoesNotExist:
         return
 
-    if old_instance.time != instance.time:
-        # Найти всех подписчиков по дате, отелю, типу трансфера
-        notifications = TransferNotification.objects.filter(
-            hotel=instance.hotel,
-            departure_date=instance.group.date,
-            transfer_type='group'
+    if old_instance.time == instance.time:
+        return  # Время не изменилось — ничего не делаем
+
+    print(f"[DEBUG] Время трансфера изменилось для {instance.hotel.name} на {instance.time}")
+
+    # Находим подписчиков на уведомление по отелю и дате
+    notifications = TransferNotification.objects.filter(
+        hotel=instance.hotel,
+        departure_date=instance.group.date,
+        transfer_type='group'
+    )
+
+    for notif in notifications:
+        if notif.departure_time_sent == instance.time:
+            print(f"[INFO] Уже отправлено время {instance.time} для {notif.email} — пропускаем")
+            continue
+
+        activate(notif.language)
+
+        subject = _("Изменение времени трансфера")
+        message = _(
+            f"Уважаемый(ая),\n\n"
+            f"Время вашего трансфера из отеля {instance.hotel.name} "
+            f"на {notif.departure_date.strftime('%d.%m.%Y')} было изменено.\n"
+            f"Новое время выезда: {instance.time.strftime('%H:%M')}.\n\n"
+            f"С уважением,\nКоманда CostaSolinfo"
         )
 
-        for n in notifications:
-            # Если время уже отправлялось и совпадает — не отправлять повторно
-            if n.departure_time_sent == instance.time:
-                continue
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[notif.email],
+            fail_silently=False
+        )
 
-            activate(n.language)
+        print(f"[OK] Письмо отправлено на {notif.email}")
 
-            subject = _("Изменение времени трансфера")
-            message = _(
-                f"Уважаемый(ая),\n\n"
-                f"Время вашего трансфера из отеля {instance.hotel.name} "
-                f"на {n.departure_date.strftime('%d.%m.%Y')} было изменено.\n"
-                f"Новое время выезда: {instance.time.strftime('%H:%M')}.\n\n"
-                f"С уважением,\nКоманда CostaSolinfo"
-            )
+        # Обновляем отправленное время
+        notif.departure_time_sent = instance.time
+        notif.save(update_fields=["departure_time_sent"])
+        print(f"[OK] Обновлено departure_time_sent для {notif.email}")
 
-            send_mail(
-                subject=subject,
-                message=message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[n.email],
-                fail_silently=False
-            )
 
-            # Обновляем сохранённое время
-            n.departure_time_sent = instance.time
-            n.save()
+# @receiver(pre_save, sender=TransferSchedule)
+# def notify_private_transfer_time_change(sender, instance, **kwargs):
+#     if not instance.pk:
+#         return  # Новый объект — не сравниваем
+
+#     try:
+#         old_instance = TransferSchedule.objects.get(pk=instance.pk)
+#     except TransferSchedule.DoesNotExist:
+#         return
+
+#     # Проверяем: это индивидуальный трансфер и время изменилось
+#     if instance.transfer_type != 'private' or old_instance.departure_time == instance.departure_time:
+#         return
+
+#     # Уведомления через TransferNotification
+#     notifications = TransferNotification.objects.filter(
+#         hotel=instance.hotel,
+#         departure_date=instance.departure_date,
+#         transfer_type='private'
+#     )
+
+#     for notif in notifications:
+#         if notif.departure_time_sent == instance.departure_time:
+#             continue  # Уже отправлено
+
+#         activate(notif.language)
+
+#         context = {
+#             "hotel": instance.hotel.name,
+#             "date": instance.departure_date.strftime('%d.%m.%Y'),
+#             "time": instance.departure_time.strftime('%H:%M') if instance.departure_time else '',
+#             "map_link": f"https://maps.google.com/?q={instance.pickup_point.latitude},{instance.pickup_point.longitude}" if instance.pickup_point else "#",
+#         }
+
+#         subject = "Transfer Information"
+#         html_content = render_to_string("emails/transfer_notification_en.html", context)
+#         text_content = strip_tags(html_content)
+
+#         email = EmailMultiAlternatives(subject, text_content, settings.DEFAULT_FROM_EMAIL, [notif.email])
+#         email.attach_alternative(html_content, "text/html")
+#         email.send()
+
+#         notif.departure_time_sent = instance.departure_time
+#         notif.save(update_fields=["departure_time_sent"])
+
+#     # Уведомления по TransferInquiry
+#     inquiries = TransferInquiry.objects.filter(
+#         hotel=instance.hotel,
+#         departure_date=instance.departure_date,
+#         replied=True
+#     )
+
+#     for inquiry in inquiries:
+#         subject = "Transfer Time Updated"
+#         message = (
+#             f"Dear {inquiry.last_name},\n\n"
+#             f"The departure time of your transfer from the hotel {instance.hotel.name} "
+#             f"on {instance.departure_date.strftime('%d.%m.%Y')} has been updated.\n"
+#             f"New time: {instance.departure_time.strftime('%H:%M')}.\n\n"
+#             f"Best regards,\nCostaSolinfo Team"
+#         )
+
+#         send_mail(
+#             subject=subject,
+#             message=message,
+#             from_email=settings.DEFAULT_FROM_EMAIL,
+#             recipient_list=[inquiry.email],
+#             fail_silently=False
+#         )

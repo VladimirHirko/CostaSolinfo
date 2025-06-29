@@ -157,7 +157,19 @@ class TransferNotification(models.Model):
     def __str__(self):
         return f"{self.email} ({self.hotel}) {self.departure_date} [{self.transfer_type}]"
 
+# Модель логов изменения трансферов
+class TransferChangeLog(models.Model):
+    schedule = models.ForeignKey(TransferSchedule, on_delete=models.CASCADE)
+    hotel_name = models.CharField(max_length=255)
+    date = models.DateField()
+    old_time = models.TimeField()
+    new_time = models.TimeField()
+    changed_by = models.CharField(max_length=150)
+    changed_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return f"{self.hotel_name} | {self.date} | {self.old_time} → {self.new_time}"
+ 
 
 
 

@@ -1,7 +1,9 @@
+import pandas as pd
+import datetime
 from django.contrib import admin, messages
 from django.core.mail import EmailMultiAlternatives, send_mail
 from django.shortcuts import render, redirect
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, HttpResponse
 from django.urls import reverse
 from django.template.response import TemplateResponse
 from django.template.loader import render_to_string
@@ -11,12 +13,15 @@ from .models import (
     Question, ContactInfo, AboutUs, TransferSchedule,
     Region, PageBanner, GroupTransferPickupPoint, PrivateTransferPickupPoint,
     TransferSchedule, TransferScheduleGroup, TransferNotification,
-    TransferInquiry, TransferInquiryLog, TransferScheduleItem
+    TransferInquiry, TransferInquiryLog, TransferScheduleItem,
+    TransferChangeLog
 )
 from django.urls import path
 from django.utils.safestring import mark_safe
 from django.utils.html import format_html
-from django.utils.timezone import now
+from django.utils.timezone import now, localtime
+from django.utils.translation import activate, deactivate_all, gettext as _
+from core.utils import send_html_email
 from .forms import ExcursionAdminForm, BulkTransferScheduleForm
 
 # Баннеры на старницах
@@ -346,13 +351,12 @@ class TransferScheduleInline(admin.TabularInline):
 
 class TransferScheduleItemInline(admin.TabularInline):
     model = TransferSchedule
-    extra = 1  # сколько пустых строк по умолчанию
+    extra = 1  # сколько пустых строк по умолчанию,,,
     autocomplete_fields = ['hotel', 'pickup_point']
     fields = ('hotel', 'departure_time', 'pickup_point', 'passenger_last_name')
     show_change_link = True
     
 
-# Админка для TransferScheduleGroup  
 @admin.register(TransferScheduleGroup)
 class TransferScheduleGroupAdmin(admin.ModelAdmin):
     inlines = [TransferScheduleItemInline]
@@ -365,15 +369,36 @@ class TransferScheduleGroupAdmin(admin.ModelAdmin):
 
             if instance.pk:
                 try:
-                    old = TransferScheduleItem.objects.get(pk=instance.pk)
-                    old_time = old.time
-                except TransferScheduleItem.DoesNotExist:
-                    pass  # объект ещё не существовал — просто пропускаем
+                    old = TransferSchedule.objects.get(pk=instance.pk)
+                    old_time = old.departure_time
+                except TransferSchedule.DoesNotExist:
+                    pass
 
-            instance.save()  # обязательно сохранить перед отправкой уведомлений
+            instance.save()
 
-            # Отправляем уведомления только если время изменилось
-            if old_time and old_time != instance.time:
+            if old_time and old_time != instance.departure_time:
+                from_time = old_time.strftime('%H:%M')
+                to_time = instance.departure_time.strftime('%H:%M')
+
+                # ✅ Стандартный лог Django
+                self.log_change(
+                    request,
+                    instance,
+                    f"Время трансфера изменено: отель {instance.hotel.name}, дата {instance.group.date.strftime('%d.%m.%Y')}, с {from_time} на {to_time}"
+                )
+
+                # ✅ Кастомный лог
+                TransferChangeLog.objects.create(
+                    schedule=instance,
+                    hotel_name=instance.hotel.name,
+                    date=instance.group.date,
+                    old_time=old_time,
+                    new_time=instance.departure_time,
+                    changed_by=request.user.username,
+                    changed_at=now()
+                )
+
+                # ✅ Email
                 notifications = TransferNotification.objects.filter(
                     hotel=instance.hotel,
                     departure_date=instance.group.date,
@@ -381,22 +406,80 @@ class TransferScheduleGroupAdmin(admin.ModelAdmin):
                 )
 
                 for notif in notifications:
-                    send_mail(
-                        subject="Изменение времени трансфера",
-                        message=(
-                            f"Уважаемый(ая),\n\n"
-                            f"Время вашего трансфера из отеля {instance.hotel.name} "
-                            f"на {instance.group.date.strftime('%d.%m.%Y')} было изменено.\n"
-                            f"Новое время выезда: {instance.time.strftime('%H:%M')}.\n\n"
-                            f"С уважением,\nКоманда CostaSolinfo"
-                        ),
-                        from_email="CostaSolinfo.Malaga@gmail.com",
-                        recipient_list=[notif.email],
-                        fail_silently=False
-                    )
+                    activate(notif.language or 'ru')  # мультиязычность
+
+                    subject = _("Transfer time has been updated")  # всегда по-английски
+                    lang_code = notif.language or 'en'
+                    template_name = f"emails/transfer_time_changed_{lang_code}.html"
+
+                    try:
+                        # Получаем точку отправления
+                        pickup_point = None
+                        if instance.pickup_point:
+                            pickup_point = instance.pickup_point
+                        else:
+                            from core.models import PickupPoint
+                            pickup_point = PickupPoint.objects.filter(
+                                hotel=instance.hotel,
+                                transfer_type=instance.group.transfer_type
+                            ).first()
+
+                        pickup_name = pickup_point.name if pickup_point else None
+
+                        map_link = (
+                            f"https://www.google.com/maps?q={pickup_point.latitude},{pickup_point.longitude}"
+                            if pickup_point and pickup_point.latitude and pickup_point.longitude
+                            else None
+                        )
+
+                        # Отправляем HTML-письмо
+                        send_html_email(
+                            subject=subject,
+                            to_email=notif.email,
+                            template_name=template_name,
+                            context={
+                                "hotel_name": instance.hotel.name,
+                                "departure_date": instance.group.date.strftime('%d.%m.%Y'),
+                                "old_time": from_time,
+                                "new_time": to_time,
+                                "pickup_point": pickup_name,
+                                "map_link": map_link,  # ✅ Вставляем ссылку
+                            }
+                        )
+                        notif.departure_time_sent = instance.departure_time
+                        notif.save(update_fields=["departure_time_sent"])
+                    except Exception as e:
+                        print(f"[ERROR] Failed to send email to {notif.email} using template {template_name}: {e}")
 
         formset.save_m2m()
+        deactivate_all()  # ✅ восстановление языка после активации
 
+
+@admin.register(TransferChangeLog)
+class TransferChangeLogAdmin(admin.ModelAdmin):
+    list_display = ('hotel_name', 'date', 'old_time', 'new_time', 'changed_by', 'changed_at')
+    actions = ['export_to_excel']
+
+    def export_to_excel(self, request, queryset):
+        data = []
+        for log in queryset:
+            data.append({
+                "Отель": log.hotel_name,
+                "Дата": log.date.strftime('%d.%m.%Y'),
+                "Старое время": log.old_time.strftime('%H:%M'),
+                "Новое время": log.new_time.strftime('%H:%M'),
+                "Кто изменил": log.changed_by,
+                "Когда": log.changed_at.strftime('%d.%m.%Y %H:%M'),
+            })
+
+        df = pd.DataFrame(data)
+        response = HttpResponse(content_type='application/vnd.ms-excel')
+        filename = f"Изменения_трансфера_{datetime.date.today()}.xlsx"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        df.to_excel(response, index=False)
+        return response
+
+    export_to_excel.short_description = "📥 Экспортировать в Excel"
 
 # Админка для нотификаций по трансферам
 @admin.register(TransferNotification)

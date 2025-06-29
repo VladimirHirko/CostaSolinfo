@@ -10,9 +10,9 @@ from core.models import (
     Homepage, InfoMeeting, AirportTransfer, Question, 
     ContactInfo, AboutUs, Excursion, TransferSchedule, Hotel,
     PageBanner, Hotel, PickupPoint, TransferNotification,
-    TransferInquiry
+    TransferInquiry, TransferScheduleItem, TransferScheduleGroup
     )
-
+from core.utils import send_html_email
 from .serializers import (
     HomepageSerializer, InfoMeetingSerializer, AirportTransferSerializer,
     QuestionSerializer, ContactInfoSerializer, AboutUsSerializer, ExcursionSerializer,
@@ -297,33 +297,67 @@ class TransferNotificationViewSet(viewsets.ViewSet):
         if serializer.is_valid():
             instance = serializer.save()
 
-            # Активируем язык для письма
+            # Получаем трансфер (TransferScheduleItem внутри группы)
+            group = TransferScheduleGroup.objects.filter(
+                date=instance.departure_date,
+                transfer_type__iexact=instance.transfer_type
+            ).first()
+
+            transfer_item = TransferSchedule.objects.filter(
+                group=group,
+                hotel=instance.hotel
+            ).first()
+
+
+            # Время трансфера (из поля time, не departure_time!)
+            departure_time = transfer_item.departure_time if transfer_item else None
+            departure_time_str = departure_time.strftime('%H:%M') if departure_time else _("—")
+
+            # Пробуем получить точку сбора
+            pickup_point = None
+            if transfer_item and transfer_item.pickup_point:
+                pickup_point = transfer_item.pickup_point
+            else:
+                from core.models import PickupPoint
+                pickup_point = PickupPoint.objects.filter(
+                    hotel=instance.hotel,
+                    transfer_type=instance.transfer_type
+                ).first()
+
+            # Название и карта
+            pickup_name = pickup_point.name if pickup_point else _("не указана")
+            map_link = (
+                f"https://www.google.com/maps?q={pickup_point.latitude},{pickup_point.longitude}"
+                if pickup_point and pickup_point.latitude and pickup_point.longitude
+                else None
+            )
+
+            # Устанавливаем язык
             activate(instance.language)
 
-            # Текст письма
-            subject = _("Ваш трансфер на {date}").format(date=instance.departure_date.strftime('%d.%m.%Y'))
-            message = _(
-                "Благодарим за регистрацию на уведомления о трансфере из отеля {hotel}.\n\n"
-                "Дата трансфера: {date}\n"
-                "Тип трансфера: {type}\n"
-                "Вы получите письмо, если время выезда будет изменено.\n\n"
-                "Спасибо!"
-            ).format(
-                hotel=instance.hotel.name,
-                date=instance.departure_date.strftime('%d.%m.%Y'),
-                type=instance.get_transfer_type_display()
+            # Отправляем HTML-письмо
+            send_html_email(
+                subject = "Airport transfer details",
+                to_email=instance.email,
+                template_name=f"emails/transfer_notification_{instance.language}.html",
+                context={
+                    "hotel_name": instance.hotel.name,
+                    "departure_date": instance.departure_date.strftime('%d.%m.%Y'),
+                    "departure_time": departure_time_str,
+                    "pickup_point": pickup_name,
+                    "map_link": map_link,
+                }
             )
 
-            send_mail(
-                subject,
-                message,
-                'info@costasolinfo.com',  # Адрес отправителя
-                [instance.email],
-                fail_silently=False,
-            )
+            # Сохраняем время отправки
+            if departure_time:
+                instance.departure_time_sent = departure_time
+                instance.save(update_fields=["departure_time_sent"])
 
             return Response({"detail": _("Информация отправлена на почту.")}, status=201)
+
         return Response(serializer.errors, status=400)
+
         
 # Вьюшка обратной связи по индивидуальтным трансферам
 class TransferInquiryViewSet(viewsets.ModelViewSet):

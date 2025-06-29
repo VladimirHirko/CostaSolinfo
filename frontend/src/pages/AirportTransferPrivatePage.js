@@ -7,7 +7,7 @@ import TransferMap from '../components/TransferMap';
 import 'react-datepicker/dist/react-datepicker.css';
 
 const AirportTransferPrivatePage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const [hotel, setHotel] = useState('');
   const [hotelId, setHotelId] = useState(null);
@@ -299,7 +299,7 @@ const AirportTransferPrivatePage = () => {
           hotel: hotelId,
           transfer_type: 'private',
           departure_date: dateStr,
-          language: 'ru'
+          language: i18n.language  // язык страницы
         })
       });
 

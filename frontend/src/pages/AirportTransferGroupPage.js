@@ -7,7 +7,7 @@ import TransferMap from '../components/TransferMap';
 import 'react-datepicker/dist/react-datepicker.css';
 
 const AirportTransferGroupPage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [hotel, setHotel] = useState('');
   const [hotelId, setHotelId] = useState(null);
   const [hotelSuggestions, setHotelSuggestions] = useState([]);
@@ -199,7 +199,7 @@ const AirportTransferGroupPage = () => {
           hotel: hotelId,  // ✅ Важно: заменили hotel_id на hotel
           transfer_type: 'group',
           departure_date: dateStr,
-          language: 'ru'  // позже сделаем автоопределение
+          language: i18n.language
         })
       });
 

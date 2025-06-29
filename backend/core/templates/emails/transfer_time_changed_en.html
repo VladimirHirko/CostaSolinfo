@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body { font-family: Arial, sans-serif; color: #333; }
+    .container { padding: 20px; background: #fff0f0; border: 1px solid #ffcccc; border-radius: 8px; }
+    .header { font-size: 18px; font-weight: bold; color: #cc0000; margin-bottom: 10px; }
+    .content { font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">Transfer Time Changed</div>
+    <div class="content">
+      Dear Guest,<br><br>
+      Please note that the time of your transfer from the hotel <b>{{ hotel_name }}</b> on <b>{{ departure_date }}</b> has been changed.<br>
+      <b>New departure time: {{ new_time }}</b>.<br><br>
+
+      {% if pickup_point %}
+        <b>Departure point:</b> {{ pickup_point }}<br>
+      {% endif %}
+
+      {% if map_link %}
+        <a href="{{ map_link }}">Open map with departure point</a><br><br>
+      {% endif %}
+
+      We apologize for any inconvenience.<br>
+      <i>The CostaSolinfo Team</i>
+    </div>
+  </div>
+</body>
+</html>

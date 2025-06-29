@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    body { font-family: Arial, sans-serif; color: #333; }
+    .container { padding: 20px; background: #fff0f0; border: 1px solid #ffcccc; border-radius: 8px; }
+    .header { font-size: 18px; font-weight: bold; color: #cc0000; margin-bottom: 10px; }
+    .content { font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">Изменение времени трансфера</div>
+    <div class="content">
+      Уважаемый(ая),<br><br>
+      Обратите внимание: время вашего трансфера из отеля <b>{{ hotel_name }}</b> на <b>{{ departure_date }}</b> изменилось.<br>
+      <b>Новое время выезда: {{ new_time }}</b>.<br><br>
+      Приносим извинения за возможные неудобства.<br>
+      <i>Команда CostaSolinfo</i>
+    </div>
+  </div>
+</body>
+</html>
