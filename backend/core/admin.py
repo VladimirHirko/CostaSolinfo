@@ -162,6 +162,8 @@ class CustomAdminSite(admin.AdminSite):
                 count = 0
                 for hotel in Hotel.objects.all():
                     time_field = form.cleaned_data.get(f"time_{hotel.id}")
+                    passenger_last_name = form.cleaned_data.get(f"lastname_{hotel.id}")
+                    
                     if time_field:
                         pickup_point = PickupPoint.objects.filter(hotel=hotel, transfer_type=transfer_type).first()
                         TransferSchedule.objects.create(
@@ -169,9 +171,11 @@ class CustomAdminSite(admin.AdminSite):
                             hotel=hotel,
                             departure_date=transfer_date,
                             departure_time=time_field,
-                            pickup_point=pickup_point
+                            pickup_point=pickup_point,
+                            passenger_last_name=passenger_last_name  # 🔹 добавлено
                         )
                         count += 1
+
 
                 messages.success(request, f"Сохранено {count} трансферов.")
                 return redirect("..")
@@ -374,7 +378,12 @@ class TransferScheduleGroupAdmin(admin.ModelAdmin):
                 except TransferSchedule.DoesNotExist:
                     pass
 
+            # 🛠️ Фикс: устанавливаем дату, если не указана
+            if not instance.departure_date:
+                instance.departure_date = instance.group.date
+
             instance.save()
+
 
             if old_time and old_time != instance.departure_time:
                 from_time = old_time.strftime('%H:%M')
@@ -551,4 +560,3 @@ class TransferInquiryAdmin(admin.ModelAdmin):
             email=inquiry.email,
             reply_content=inquiry.reply
         )
-

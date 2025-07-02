@@ -91,8 +91,11 @@ class BulkTransferScheduleAdmin:
                 for hotel in Hotel.objects.all():
                     time_field = f"time_{hotel.id}"
                     point_field = f"pickup_{hotel.id}"
+                    lastname_field = f"lastname_{hotel.id}"  # 🟡 Новое поле
+
                     time = form.cleaned_data.get(time_field)
                     point = form.cleaned_data.get(point_field)
+                    last_name = form.cleaned_data.get(lastname_field)  # 🟡 Получаем фамилию
 
                     if time and point:
                         TransferSchedule.objects.create(
@@ -100,8 +103,10 @@ class BulkTransferScheduleAdmin:
                             date=transfer_date,
                             hotel=hotel,
                             pickup_point=point,
-                            departure_time=time
+                            departure_time=time,
+                            passenger_last_name=last_name.strip() if last_name else None  # ✅ Сохраняем фамилию
                         )
+
                 self.message_user(request, "Расписание успешно добавлено!")
                 return redirect("..")
         else:
@@ -172,6 +177,12 @@ def transfer_info(request):
         return Response({"error": "No transfer found for given hotel and date"}, status=status.HTTP_404_NOT_FOUND)
 
 
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from Levenshtein import distance as levenshtein_distance
+from .models import TransferScheduleGroup, TransferSchedule, PickupPoint, Hotel
+
+
 @api_view(['GET'])
 def transfer_schedule_view(request):
     hotel_id = request.GET.get('hotel_id')
@@ -183,87 +194,101 @@ def transfer_schedule_view(request):
         return Response({"error": "Missing hotel_id or date"}, status=400)
 
     try:
-        transfers = TransferSchedule.objects.filter(
-            hotel_id=hotel_id,
-            departure_date=date,
+        group = TransferScheduleGroup.objects.filter(
+            date=date,
             transfer_type=transfer_type
-        ).order_by('departure_time')
+        ).first()
 
-        if not transfers.exists():
+        if not group:
+            return Response({'error': 'No transfer group found'}, status=404)
+
+        schedules = group.schedules.filter(hotel_id=hotel_id).order_by('departure_time')
+
+        if not schedules.exists():
             return Response({'error': 'No transfer schedule found'}, status=404)
 
+        # === PRIVATE TRANSFER ===
         if transfer_type == 'private':
-            from Levenshtein import distance as levenshtein_distance
-
-            # 🔍 Если указана фамилия — ищем совпадение
             if last_name:
-                match = transfers.filter(passenger_last_name__iexact=last_name).first()
-                if match:
-                    pickup_point = PickupPoint.objects.filter(hotel=match.hotel, transfer_type=transfer_type).first()
+                exact = schedules.filter(passenger_last_name__iexact=last_name).first()
+                if exact:
+                    pp = exact.pickup_point or PickupPoint.objects.filter(
+                        hotel=exact.hotel,
+                        transfer_type='private'
+                    ).first()
                     return Response({
                         "success": True,
-                        "pickup_time": match.departure_time.strftime("%H:%M"),
-                        "pickup_point": pickup_point.name if pickup_point else "—",
-                        "pickup_lat": pickup_point.latitude if pickup_point else None,
-                        "pickup_lng": pickup_point.longitude if pickup_point else None,
+                        "pickup_time": exact.departure_time.strftime("%H:%M"),
+                        "pickup_point": pp.name if pp else "—",
+                        "pickup_lat": pp.latitude if pp else None,
+                        "pickup_lng": pp.longitude if pp else None,
                     })
 
-                # ❌ Не найдено — ищем похожие фамилии
+
+                # Try fuzzy match
                 candidates = []
-                for ln in transfers.values_list('passenger_last_name', flat=True):
+                for ln in schedules.values_list('passenger_last_name', flat=True):
                     if ln:
-                        dist = levenshtein_distance(last_name.lower(), ln.lower())
+                        dist = levenshtein_distance(last_name, ln.lower())
                         if 0 < dist <= 3:
                             candidates.append((dist, ln))
-
                 if candidates:
                     candidates.sort()
-                    best_guess = candidates[0][1]
                     return Response({
                         "success": False,
                         "reason": "no_exact_match",
-                        "suggestion": best_guess
-                    }, status=200)
+                        "suggestion": candidates[0][1]
+                    })
 
                 return Response({
                     "success": False,
                     "reason": "not_found",
                     "message": "Фамилия не найдена. Проверьте правильность написания."
-                }, status=200)
+                })
 
-            # ⛔ Фамилия не указана, но несколько трансферов
-            if transfers.count() > 1:
+            if schedules.count() > 1:
                 return Response({
                     "success": False,
                     "reason": "multiple_transfers",
-                    "message": "На данную дату из этого отеля выезжает несколько семей. Уточните фамилию."
-                }, status=200)
+                    "message": "Из этого отеля выезжает несколько семей. Укажите фамилию."
+                })
 
-            # ✅ Только один трансфер — можно отдать сразу
-            transfer = transfers.first()
-            pickup_point = PickupPoint.objects.filter(hotel=transfer.hotel, transfer_type=transfer_type).first()
+            ts = schedules.first()
+            pp = ts.pickup_point or PickupPoint.objects.filter(
+                hotel=ts.hotel,
+                transfer_type='private'
+            ).first()
+            latitude = pp.latitude if pp else ts.hotel.latitude
+            longitude = pp.longitude if pp else ts.hotel.longitude
+            pickup_name = pp.name if pp else ts.hotel.name
             return Response({
                 "success": True,
-                "pickup_time": transfer.departure_time.strftime("%H:%M"),
-                "pickup_point": pickup_point.name if pickup_point else "—",
-                "pickup_lat": pickup_point.latitude if pickup_point else None,
-                "pickup_lng": pickup_point.longitude if pickup_point else None,
+                "pickup_time": ts.departure_time.strftime("%H:%M"),
+                "pickup_point": pickup_name,
+                "pickup_lat": latitude,
+                "pickup_lng": longitude,
             })
 
-
+        # === GROUP TRANSFER ===
         else:
-            # Групповой трансфер
-            transfer = transfers.first()
-            pickup_point = PickupPoint.objects.filter(hotel=transfer.hotel, transfer_type=transfer_type).first()
+            # Найдём хотя бы один трансфер
+            ts = schedules.first()
+
+            # Если у него нет явно заданной pickup_point — ищем по отелю
+            pp = ts.pickup_point if ts and ts.pickup_point else PickupPoint.objects.filter(hotel_id=hotel_id, transfer_type='group').first()
+
             return Response({
-                "pickup_time": transfer.departure_time.strftime("%H:%M"),
-                "pickup_point": pickup_point.name if pickup_point else "—",
-                "pickup_lat": pickup_point.latitude if pickup_point else None,
-                "pickup_lng": pickup_point.longitude if pickup_point else None,
+                "pickup_time": ts.departure_time.strftime("%H:%M") if ts else None,
+                "pickup_point": pp.name if pp else "—",
+                "pickup_lat": pp.latitude if pp else None,
+                "pickup_lng": pp.longitude if pp else None,
             })
+
 
     except Exception as e:
         return Response({"error": str(e)}, status=500)
+
+
 
 
 
@@ -297,34 +322,46 @@ class TransferNotificationViewSet(viewsets.ViewSet):
         if serializer.is_valid():
             instance = serializer.save()
 
-            # Получаем трансфер (TransferScheduleItem внутри группы)
+            # Получаем группу трансфера по дате и типу
             group = TransferScheduleGroup.objects.filter(
                 date=instance.departure_date,
                 transfer_type__iexact=instance.transfer_type
             ).first()
 
-            transfer_item = TransferSchedule.objects.filter(
-                group=group,
-                hotel=instance.hotel
-            ).first()
+            transfer_item = None
+            pickup_point = None
 
+            if group:
+                schedules = TransferSchedule.objects.filter(
+                    group=group,
+                    hotel=instance.hotel
+                )
 
-            # Время трансфера (из поля time, не departure_time!)
+                # 🟩 1. Пробуем найти по фамилии
+                if instance.last_name:
+                    transfer_item = schedules.filter(
+                        passenger_last_name__iexact=instance.last_name.strip()
+                    ).first()
+
+                # 🟨 2. Если не нашли по фамилии — берём самый ранний трансфер
+                if not transfer_item:
+                    transfer_item = schedules.order_by("departure_time").first()
+
+                # 🟦 3. Получаем точку сбора
+                if transfer_item and transfer_item.pickup_point:
+                    pickup_point = transfer_item.pickup_point
+                else:
+                    from core.models import PickupPoint
+                    pickup_point = PickupPoint.objects.filter(
+                        hotel=instance.hotel,
+                        transfer_type=instance.transfer_type
+                    ).first()
+
+            # 🔵 Время выезда (если найден трансфер)
             departure_time = transfer_item.departure_time if transfer_item else None
             departure_time_str = departure_time.strftime('%H:%M') if departure_time else _("—")
 
-            # Пробуем получить точку сбора
-            pickup_point = None
-            if transfer_item and transfer_item.pickup_point:
-                pickup_point = transfer_item.pickup_point
-            else:
-                from core.models import PickupPoint
-                pickup_point = PickupPoint.objects.filter(
-                    hotel=instance.hotel,
-                    transfer_type=instance.transfer_type
-                ).first()
-
-            # Название и карта
+            # 🔵 Название и карта точки
             pickup_name = pickup_point.name if pickup_point else _("не указана")
             map_link = (
                 f"https://www.google.com/maps?q={pickup_point.latitude},{pickup_point.longitude}"
@@ -332,12 +369,12 @@ class TransferNotificationViewSet(viewsets.ViewSet):
                 else None
             )
 
-            # Устанавливаем язык
+            # 🌐 Устанавливаем язык
             activate(instance.language)
 
-            # Отправляем HTML-письмо
+            # ✉️ Отправляем письмо
             send_html_email(
-                subject = "Airport transfer details",
+                subject="Airport transfer details",
                 to_email=instance.email,
                 template_name=f"emails/transfer_notification_{instance.language}.html",
                 context={
@@ -349,7 +386,7 @@ class TransferNotificationViewSet(viewsets.ViewSet):
                 }
             )
 
-            # Сохраняем время отправки
+            # 💾 Сохраняем время отправки
             if departure_time:
                 instance.departure_time_sent = departure_time
                 instance.save(update_fields=["departure_time_sent"])
@@ -357,6 +394,7 @@ class TransferNotificationViewSet(viewsets.ViewSet):
             return Response({"detail": _("Информация отправлена на почту.")}, status=201)
 
         return Response(serializer.errors, status=400)
+
 
         
 # Вьюшка обратной связи по индивидуальтным трансферам

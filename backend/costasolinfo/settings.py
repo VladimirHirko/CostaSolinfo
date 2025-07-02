@@ -155,5 +155,9 @@ EMAIL_HOST_USER = 'CostaSolinfo.Malaga@gmail.com'
 EMAIL_HOST_PASSWORD = 'efzz nxbf ijbv vihd'
 DEFAULT_FROM_EMAIL = 'CostaSolinfo.Malaga@gmail.com'
 
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend']
+}
+
 
 

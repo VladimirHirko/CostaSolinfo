@@ -18,6 +18,7 @@ class PageBanner(models.Model):
         ('ask', 'Задать вопрос'),
         ('contacts', 'Контакты'),
         ('about', 'О нас'),
+        ('group_transfer', 'Групповой трансфер'),  # 🟢 ДОБАВЬ ЭТО
     ]
 
     page = models.CharField(max_length=50, choices=PAGE_CHOICES, unique=True)
@@ -149,6 +150,7 @@ class TransferNotification(models.Model):
         null=True, blank=True,
         verbose_name=_("Sent Departure Time")
     )
+    last_name = models.CharField(max_length=100, blank=True, null=True)
 
     class Meta:
         verbose_name = _("Transfer Notification")
@@ -377,4 +379,3 @@ class Excursion(models.Model):
     class Meta:
         verbose_name = "Экскурсия"
         verbose_name_plural = "Экскурсии"
-

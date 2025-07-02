@@ -37,7 +37,7 @@ urlpatterns = [
     path('api/contact-info/', ContactInfoView.as_view(), name='contact-info'),
     path('api/about-us/', AboutUsView.as_view(), name='about-us'),
     path('api/excursion/', ExcursionView.as_view(), name='excursion'),
-    path('api/transfer-schedule/', TransferScheduleLookupView.as_view(), name='transfer-schedule'),
+    #path('api/transfer-schedule/', TransferScheduleLookupView.as_view(), name='transfer-schedule'),
     path('api/', include(router.urls)),
     path('api/hotels/', views.hotel_search, name='hotel_search'),
 

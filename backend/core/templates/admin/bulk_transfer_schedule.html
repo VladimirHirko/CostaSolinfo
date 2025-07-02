@@ -11,6 +11,7 @@
         <th>Отель</th>
         <th>Время выезда</th>
         <th>Точка сбора</th>
+        <th>Фамилия пассажира</th>  {# 🔹 Новая колонка #}
       </tr>
       {% for field in form %}
         {% if field.name|slice:":5" == "time_" %}
@@ -20,6 +21,11 @@
             <td>
               {% with pickup_name="pickup_"|add:field.name|slice:"5:" %}
                 {{ form[pickup_name] }}
+              {% endwith %}
+            </td>
+            <td>
+              {% with lastname_name="lastname_"|add:field.name|slice:"5:" %}
+                {{ form[lastname_name] }}
               {% endwith %}
             </td>
           </tr>

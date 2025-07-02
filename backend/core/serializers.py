@@ -56,9 +56,11 @@ class TransferScheduleResponseSerializer(serializers.Serializer):
     hotel_lng = serializers.FloatField()
 
 class TransferNotificationCreateSerializer(serializers.ModelSerializer):
+    last_name = serializers.CharField(required=False, allow_blank=True)
+
     class Meta:
         model = TransferNotification
-        fields = ['email', 'transfer_type', 'hotel', 'departure_date', 'language']
+        fields = ['email', 'transfer_type', 'hotel', 'departure_date', 'language', 'last_name']
 
     def validate_email(self, value):
         if not value or '@' not in value:
@@ -72,8 +74,16 @@ class TransferNotificationCreateSerializer(serializers.ModelSerializer):
             transfer_type=validated_data['transfer_type'],
             departure_date=validated_data['departure_date'],
             language=validated_data.get('language', 'ru'),
+            defaults={'last_name': validated_data.get('last_name')}
         )
+
+        # Если объект уже был, но last_name отсутствует — добавим
+        if not instance.last_name and validated_data.get('last_name'):
+            instance.last_name = validated_data['last_name']
+            instance.save(update_fields=["last_name"])
+
         return instance
+
 
 # Обратная связь по индивидуальному трансферу
 class TransferInquirySerializer(serializers.ModelSerializer):
@@ -119,5 +129,4 @@ class AboutUsSerializer(BaseTranslationSerializer):
     class Meta:
         model = AboutUs
         extra_fields = ['image']  # если есть
-
 
