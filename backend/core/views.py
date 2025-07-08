@@ -315,14 +315,12 @@ def available_hotels_for_transfer(request):
     return Response(serializer.data)
 
 
-# Вьюха отправки писем подписчикам по трансферам
 class TransferNotificationViewSet(viewsets.ViewSet):
     def create(self, request):
         serializer = TransferNotificationCreateSerializer(data=request.data)
         if serializer.is_valid():
             instance = serializer.save()
 
-            # Получаем группу трансфера по дате и типу
             group = TransferScheduleGroup.objects.filter(
                 date=instance.departure_date,
                 transfer_type__iexact=instance.transfer_type
@@ -337,31 +335,50 @@ class TransferNotificationViewSet(viewsets.ViewSet):
                     hotel=instance.hotel
                 )
 
-                # 🟩 1. Пробуем найти по фамилии
-                if instance.last_name:
+                if instance.transfer_type == 'private':
+                    # ⛔ Обязательно указание фамилии
+                    if not instance.last_name:
+                        return Response({
+                            "detail": "Для индивидуального трансфера требуется указать фамилию.",
+                            "status": "missing_last_name"
+                        }, status=400)
+
+                    # 🔍 Печать всех фамилий в расписании для отладки
+                    print("== ВСЕ ФАМИЛИИ В БАЗЕ ==")
+                    for s in schedules:
+                        print(f"[БД]: '{s.passenger_last_name.strip().lower()}'")
+
+                    print(f"[ИЩЕМ]: '{instance.last_name.strip().lower()}'")
+
+                    # 🔍 Пытаемся найти по фамилии
                     transfer_item = schedules.filter(
                         passenger_last_name__iexact=instance.last_name.strip()
                     ).first()
 
-                # 🟨 2. Если не нашли по фамилии — берём самый ранний трансфер
-                if not transfer_item:
+                    if not transfer_item:
+                        return Response({
+                            "detail": "Фамилия не найдена в списке трансферов на эту дату.",
+                            "status": "not_found"
+                        }, status=404)
+
+                else:
+                    # ✅ Групповой трансфер — фамилия не обязательна
                     transfer_item = schedules.order_by("departure_time").first()
 
-                # 🟦 3. Получаем точку сбора
+                # 📍 Точка сбора
                 if transfer_item and transfer_item.pickup_point:
                     pickup_point = transfer_item.pickup_point
                 else:
-                    from core.models import PickupPoint
                     pickup_point = PickupPoint.objects.filter(
                         hotel=instance.hotel,
                         transfer_type=instance.transfer_type
                     ).first()
 
-            # 🔵 Время выезда (если найден трансфер)
+            # 🕒 Время трансфера
             departure_time = transfer_item.departure_time if transfer_item else None
             departure_time_str = departure_time.strftime('%H:%M') if departure_time else _("—")
 
-            # 🔵 Название и карта точки
+            # 📌 Название и карта
             pickup_name = pickup_point.name if pickup_point else _("не указана")
             map_link = (
                 f"https://www.google.com/maps?q={pickup_point.latitude},{pickup_point.longitude}"
@@ -369,10 +386,10 @@ class TransferNotificationViewSet(viewsets.ViewSet):
                 else None
             )
 
-            # 🌐 Устанавливаем язык
+            # 🌍 Устанавливаем язык
             activate(instance.language)
 
-            # ✉️ Отправляем письмо
+            # ✉️ Отправка письма
             send_html_email(
                 subject="Airport transfer details",
                 to_email=instance.email,
@@ -386,7 +403,7 @@ class TransferNotificationViewSet(viewsets.ViewSet):
                 }
             )
 
-            # 💾 Сохраняем время отправки
+            # 💾 Лог отправки
             if departure_time:
                 instance.departure_time_sent = departure_time
                 instance.save(update_fields=["departure_time_sent"])
@@ -394,6 +411,7 @@ class TransferNotificationViewSet(viewsets.ViewSet):
             return Response({"detail": _("Информация отправлена на почту.")}, status=201)
 
         return Response(serializer.errors, status=400)
+
 
 
         

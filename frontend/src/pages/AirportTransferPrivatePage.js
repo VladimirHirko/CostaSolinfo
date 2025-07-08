@@ -299,7 +299,8 @@ const AirportTransferPrivatePage = () => {
           hotel: hotelId,
           transfer_type: 'private',
           departure_date: dateStr,
-          language: i18n.language  // язык страницы
+          language: i18n.language,  // язык страницы
+          last_name: lastName.trim()  // 🔹 это обязательно!
         })
       });
 

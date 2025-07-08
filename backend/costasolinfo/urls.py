@@ -18,6 +18,7 @@ transfer_notification_view = TransferNotificationViewSet.as_view({'post': 'creat
 
 router = DefaultRouter()
 router.register(r'transfer-inquiries', TransferInquiryViewSet, basename='transfer-inquiries')
+router.register(r'transfer-notifications', TransferNotificationViewSet, basename='transfer-notifications')
 
 
 urlpatterns = [

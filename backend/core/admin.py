@@ -378,25 +378,21 @@ class TransferScheduleGroupAdmin(admin.ModelAdmin):
                 except TransferSchedule.DoesNotExist:
                     pass
 
-            # 🛠️ Фикс: устанавливаем дату, если не указана
             if not instance.departure_date:
                 instance.departure_date = instance.group.date
 
             instance.save()
 
-
             if old_time and old_time != instance.departure_time:
                 from_time = old_time.strftime('%H:%M')
                 to_time = instance.departure_time.strftime('%H:%M')
 
-                # ✅ Стандартный лог Django
                 self.log_change(
                     request,
                     instance,
                     f"Время трансфера изменено: отель {instance.hotel.name}, дата {instance.group.date.strftime('%d.%m.%Y')}, с {from_time} на {to_time}"
                 )
 
-                # ✅ Кастомный лог
                 TransferChangeLog.objects.create(
                     schedule=instance,
                     hotel_name=instance.hotel.name,
@@ -407,7 +403,7 @@ class TransferScheduleGroupAdmin(admin.ModelAdmin):
                     changed_at=now()
                 )
 
-                # ✅ Email
+                # === 🔁 Уведомления
                 notifications = TransferNotification.objects.filter(
                     hotel=instance.hotel,
                     departure_date=instance.group.date,
@@ -415,53 +411,69 @@ class TransferScheduleGroupAdmin(admin.ModelAdmin):
                 )
 
                 for notif in notifications:
-                    activate(notif.language or 'ru')  # мультиязычность
+                    activate(notif.language or 'ru')
 
-                    subject = _("Transfer time has been updated")  # всегда по-английски
+                    # Ищем ТОЛЬКО то расписание, которое соответствует фамилии, если указано
+                    if notif.last_name and notif.transfer_type.lower() == "private":
+                        matched_schedule = TransferSchedule.objects.filter(
+                            hotel=notif.hotel,
+                            departure_date=notif.departure_date,
+                            transfer_type=notif.transfer_type,
+                            passenger_last_name__iexact=notif.last_name.strip()
+                        ).first()
+                    else:
+                        # fallback: только по отелю и типу
+                        matched_schedule = TransferSchedule.objects.filter(
+                            hotel=notif.hotel,
+                            departure_date=notif.departure_date,
+                            transfer_type=notif.transfer_type,
+                        ).order_by('departure_time').first()  # раннее время
+
+                    used_schedule = matched_schedule or instance
+                    pickup_point = used_schedule.pickup_point
+                    departure_time = used_schedule.departure_time
+
+                    if not pickup_point:
+                        pickup_point = PickupPoint.objects.filter(
+                            hotel=notif.hotel,
+                            transfer_type=notif.transfer_type
+                        ).first()
+
+                    pickup_name = pickup_point.name if pickup_point else None
+                    map_link = (
+                        f"https://www.google.com/maps?q={pickup_point.latitude},{pickup_point.longitude}"
+                        if pickup_point and pickup_point.latitude and pickup_point.longitude
+                        else None
+                    )
+
+                    subject = _("Transfer time has been updated")
                     lang_code = notif.language or 'en'
                     template_name = f"emails/transfer_time_changed_{lang_code}.html"
 
                     try:
-                        # Получаем точку отправления
-                        pickup_point = None
-                        if instance.pickup_point:
-                            pickup_point = instance.pickup_point
-                        else:
-                            from core.models import PickupPoint
-                            pickup_point = PickupPoint.objects.filter(
-                                hotel=instance.hotel,
-                                transfer_type=instance.group.transfer_type
-                            ).first()
-
-                        pickup_name = pickup_point.name if pickup_point else None
-
-                        map_link = (
-                            f"https://www.google.com/maps?q={pickup_point.latitude},{pickup_point.longitude}"
-                            if pickup_point and pickup_point.latitude and pickup_point.longitude
-                            else None
-                        )
-
-                        # Отправляем HTML-письмо
                         send_html_email(
                             subject=subject,
                             to_email=notif.email,
                             template_name=template_name,
                             context={
-                                "hotel_name": instance.hotel.name,
-                                "departure_date": instance.group.date.strftime('%d.%m.%Y'),
+                                "hotel_name": notif.hotel.name,
+                                "departure_date": notif.departure_date.strftime('%d.%m.%Y'),
                                 "old_time": from_time,
-                                "new_time": to_time,
+                                "new_time": departure_time.strftime('%H:%M'),
                                 "pickup_point": pickup_name,
-                                "map_link": map_link,  # ✅ Вставляем ссылку
+                                "map_link": map_link,
                             }
                         )
-                        notif.departure_time_sent = instance.departure_time
+                        notif.departure_time_sent = departure_time
                         notif.save(update_fields=["departure_time_sent"])
+
                     except Exception as e:
                         print(f"[ERROR] Failed to send email to {notif.email} using template {template_name}: {e}")
 
         formset.save_m2m()
-        deactivate_all()  # ✅ восстановление языка после активации
+        deactivate_all()
+
+
 
 
 @admin.register(TransferChangeLog)
