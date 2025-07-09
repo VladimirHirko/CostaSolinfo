@@ -5,7 +5,7 @@ from django.core.mail import EmailMultiAlternatives, send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.conf import settings
-from .models import TransferNotification, TransferSchedule, TransferScheduleItem, TransferInquiry
+from .models import TransferNotification, TransferSchedule, TransferScheduleItem, TransferInquiry, TransferScheduleGroup
 #from .emails import send_transfer_change_email
 
 
@@ -48,58 +48,100 @@ from .models import TransferNotification, TransferSchedule, TransferScheduleItem
 #                 fail_silently=False
 #             )
 
-@receiver(pre_save, sender=TransferScheduleItem)
-def notify_transfer_notification_change(sender, instance, **kwargs):
-    if not instance.pk:
-        return
 
-    try:
-        old_instance = TransferScheduleItem.objects.get(pk=instance.pk)
-    except TransferScheduleItem.DoesNotExist:
-        return
+@receiver(post_save, sender=TransferScheduleGroup)
+def notify_transfer_group_updated(sender, instance, **kwargs):
+    transfer_type = instance.transfer_type
+    group_date = instance.date
 
-    if old_instance.time == instance.time:
-        return  # Время не изменилось — ничего не делаем
+    print("===============================================")
+    print(f"[DEBUG] Группа трансфера сохранена: {group_date} ({transfer_type})")
+    print("===============================================")
 
-    print(f"[DEBUG] Время трансфера изменилось для {instance.hotel.name} на {instance.time}")
+    # Получаем все связанные TransferScheduleItem
+    items = TransferScheduleItem.objects.filter(group=instance)
 
-    # Находим подписчиков на уведомление по отелю и дате
-    notifications = TransferNotification.objects.filter(
-        hotel=instance.hotel,
-        departure_date=instance.group.date,
-        transfer_type='group'
-    )
+    for item in items:
+        hotel = item.hotel
+        new_time = item.time
+        last_name = (item.tourist_last_name or "").strip().lower()
 
-    for notif in notifications:
-        if notif.departure_time_sent == instance.time:
-            print(f"[INFO] Уже отправлено время {instance.time} для {notif.email} — пропускаем")
+        print(f"\n[ITEM] Отель: {hotel}, Время: {new_time}, Фамилия: {last_name}")
+
+        if transfer_type == 'group':
+            print("[INFO] Это групповой трансфер.")
+            notifications = TransferNotification.objects.filter(
+                hotel=hotel,
+                departure_date=group_date,
+                transfer_type='group'
+            )
+            print(f"[DEBUG] Найдено групповых подписчиков: {notifications.count()}")
+
+        elif transfer_type == 'private':
+            print("[INFO] Это индивидуальный трансфер.")
+
+            if not last_name:
+                print("[WARN] Не указана фамилия туриста — пропускаем.")
+                continue
+
+            all_notifications = TransferNotification.objects.filter(
+                hotel=hotel,
+                departure_date=group_date,
+                transfer_type='private'
+            )
+
+            print(f"[DEBUG] Целевая фамилия для сравнения: '{last_name}'")
+            print(f"[DEBUG] Всего найдено подписчиков: {all_notifications.count()}")
+
+            notifications = []
+            for notif in all_notifications:
+                notif_lastname = (notif.last_name or "").strip().lower()
+                print(f"[CHECK] Сравнение: '{notif_lastname}' == '{last_name}'")
+
+                if notif_lastname == last_name:
+                    print(f"[MATCH] Совпадение найдено: {notif.email}")
+                    notifications.append(notif)
+
+            print(f"[RESULT] Найдено совпадений по фамилии: {len(notifications)}")
+
+        else:
+            print("[WARN] Неизвестный тип трансфера — пропускаем item.")
             continue
 
-        activate(notif.language)
+        # Отправка писем
+        for notif in notifications:
+            if notif.departure_time_sent == new_time:
+                print(f"[INFO] Уже отправлено время {new_time} для {notif.email} — пропускаем")
+                continue
 
-        subject = _("Изменение времени трансфера")
-        message = _(
-            f"Уважаемый(ая),\n\n"
-            f"Время вашего трансфера из отеля {instance.hotel.name} "
-            f"на {notif.departure_date.strftime('%d.%m.%Y')} было изменено.\n"
-            f"Новое время выезда: {instance.time.strftime('%H:%M')}.\n\n"
-            f"С уважением,\nКоманда CostaSolinfo"
-        )
+            activate(notif.language)
 
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[notif.email],
-            fail_silently=False
-        )
+            subject = _("Изменение времени трансфера")
+            message = _(
+                f"Уважаемый(ая),\n\n"
+                f"Время вашего трансфера из отеля {hotel.name} "
+                f"на {group_date.strftime('%d.%m.%Y')} было изменено.\n"
+                f"Новое время выезда: {new_time.strftime('%H:%M')}.\n\n"
+                f"С уважением,\nКоманда CostaSolinfo"
+            )
 
-        print(f"[OK] Письмо отправлено на {notif.email}")
+            try:
+                send_mail(
+                    subject=subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[notif.email],
+                    fail_silently=False
+                )
+                print(f"[OK] Письмо отправлено на {notif.email}")
+            except Exception as e:
+                print(f"[ERROR] Ошибка при отправке письма {notif.email}: {e}")
+                continue
 
-        # Обновляем отправленное время
-        notif.departure_time_sent = instance.time
-        notif.save(update_fields=["departure_time_sent"])
-        print(f"[OK] Обновлено departure_time_sent для {notif.email}")
+            notif.departure_time_sent = new_time
+            notif.save(update_fields=["departure_time_sent"])
+            print(f"[OK] Обновлено departure_time_sent для {notif.email}")
+
 
 
 # @receiver(pre_save, sender=TransferSchedule)

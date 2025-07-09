@@ -345,6 +345,12 @@ class TransferScheduleAdmin(admin.ModelAdmin):
             obj.save()
         formset.save_m2m()
 
+@admin.register(TransferScheduleItem)
+class TransferScheduleItemAdmin(admin.ModelAdmin):
+    list_display = ('hotel', 'group', 'time', 'tourist_last_name')
+    list_filter = ('group', 'hotel')
+    search_fields = ('tourist_last_name',)
+
 # Inline для TransferSchedule
 class TransferScheduleInline(admin.TabularInline):
     model = TransferSchedule
@@ -410,28 +416,31 @@ class TransferScheduleGroupAdmin(admin.ModelAdmin):
                     transfer_type=instance.group.transfer_type,
                 )
 
+                print(f"\n[DEBUG] Сохранили трансфер: {instance.hotel.name}, {instance.group.date}, время {instance.departure_time}")
+                print(f"[DEBUG] Фамилия пассажира в расписании: '{instance.passenger_last_name}'")
+
                 for notif in notifications:
+                    notif_last = (notif.last_name or "").strip().lower()
+                    schedule_last = (instance.passenger_last_name or "").strip().lower()
+
+                    print(f"[CHECK] Сравниваем '{notif_last}' == '{schedule_last}'")
+
+                    if notif.transfer_type == 'private' and notif.last_name:
+                        if notif_last != schedule_last:
+                            print(f"[SKIP] Фамилия не совпала для {notif.email} — уведомление не отправляем.")
+                            continue
+                    else:
+                        print(f"[GROUP] Это групповой трансфер или пустая фамилия — отправляем всем.")
+
+                    # 🎯 В этот момент фамилия совпала — можно отправлять
                     activate(notif.language or 'ru')
 
-                    # Ищем ТОЛЬКО то расписание, которое соответствует фамилии, если указано
-                    if notif.last_name and notif.transfer_type.lower() == "private":
-                        matched_schedule = TransferSchedule.objects.filter(
-                            hotel=notif.hotel,
-                            departure_date=notif.departure_date,
-                            transfer_type=notif.transfer_type,
-                            passenger_last_name__iexact=notif.last_name.strip()
-                        ).first()
-                    else:
-                        # fallback: только по отелю и типу
-                        matched_schedule = TransferSchedule.objects.filter(
-                            hotel=notif.hotel,
-                            departure_date=notif.departure_date,
-                            transfer_type=notif.transfer_type,
-                        ).order_by('departure_time').first()  # раннее время
+                    subject = _("Transfer time has been updated")
+                    lang_code = notif.language or 'en'
+                    template_name = f"emails/transfer_time_changed_{lang_code}.html"
 
-                    used_schedule = matched_schedule or instance
-                    pickup_point = used_schedule.pickup_point
-                    departure_time = used_schedule.departure_time
+                    departure_time = instance.departure_time
+                    pickup_point = instance.pickup_point
 
                     if not pickup_point:
                         pickup_point = PickupPoint.objects.filter(
@@ -445,10 +454,6 @@ class TransferScheduleGroupAdmin(admin.ModelAdmin):
                         if pickup_point and pickup_point.latitude and pickup_point.longitude
                         else None
                     )
-
-                    subject = _("Transfer time has been updated")
-                    lang_code = notif.language or 'en'
-                    template_name = f"emails/transfer_time_changed_{lang_code}.html"
 
                     try:
                         send_html_email(
@@ -466,9 +471,10 @@ class TransferScheduleGroupAdmin(admin.ModelAdmin):
                         )
                         notif.departure_time_sent = departure_time
                         notif.save(update_fields=["departure_time_sent"])
+                        print(f"[OK] Уведомление отправлено на {notif.email}")
 
                     except Exception as e:
-                        print(f"[ERROR] Failed to send email to {notif.email} using template {template_name}: {e}")
+                        print(f"[ERROR] Не удалось отправить письмо {notif.email}: {e}")
 
         formset.save_m2m()
         deactivate_all()
