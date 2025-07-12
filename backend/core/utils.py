@@ -3,6 +3,11 @@ from modeltranslation.utils import get_translation_fields
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 
+from django.conf import settings
+from django.urls import reverse
+from .models import TransferNotification
+# from .email_utils import send_html_email  # или откуда у тебя вызывается send_html_email
+
 # ⬇️ Для перевода тем писем
 from django.utils.translation import gettext as _
 
@@ -64,3 +69,25 @@ def send_html_email(subject, to_email, template_name, context, lang='en'):
     )
     email.attach_alternative(html_content, "text/html")
     email.send()
+
+def send_transfer_update_email(notification: TransferNotification):
+    path = reverse('transfer_confirm', kwargs={"token": notification.confirmation_token})
+    confirmation_link = f"{settings.SITE_URL}/api/transfer-confirm/{notification.confirmation_token}/"
+
+    print("[DEBUG] Ссылка подтверждения:", confirmation_link)
+
+    context = {
+        'hotel_name': notification.hotel.name,
+        'departure_date': notification.departure_date.strftime("%d.%m.%Y"),
+        'new_time': notification.departure_time.strftime("%H:%M"),
+        'pickup_point': notification.pickup_point.name if notification.pickup_point else None,
+        'map_link': notification.map_link,
+        'confirmation_link': confirmation_link,
+    }
+
+    send_html_email(
+        subject="Время трансфера изменено",
+        template="emails/transfer_notification_ru.html",
+        context=context,
+        to=[notification.email]
+    )

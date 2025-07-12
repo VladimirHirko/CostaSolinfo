@@ -78,7 +78,7 @@ const AirportTransferPrivatePage = () => {
     setDepartureDate(localDate);
 
     let url = `http://localhost:8000/api/transfer-schedule/?hotel_id=${hotelId}&date=${dateStr}&type=private`;
-    if (lastName) {
+    if (lastName?.trim()) {
       url += `&last_name=${encodeURIComponent(lastName.trim())}`;
     }
 
@@ -96,8 +96,16 @@ const AirportTransferPrivatePage = () => {
             setPickupPoint('');
             setPickupCoords(null);
             setError(t('please_enter_last_name'));
+          } else if (data.length === 1 && !lastName?.trim()) {
+            // Один трансфер, но фамилия не введена — просим ввести
+            setNeedLastName(true);
+            setTransfers(data);
+            setPickupTime('');
+            setPickupPoint('');
+            setPickupCoords(null);
+            setError(t('please_enter_last_name'));
           } else {
-            // Один трансфер или фамилия уже указана
+            // Один трансфер и фамилия указана
             const item = data[0];
             setPickupTime(item.pickup_time || '');
             setPickupPoint(item.pickup_point || '');
@@ -121,6 +129,14 @@ const AirportTransferPrivatePage = () => {
           setError(t('please_enter_last_name'));
         } else if (data.success === false && data.reason === 'no_exact_match' && data.suggestion) {
           setError(`${t('did_you_mean')} "${data.suggestion}"?`);
+        } else if (data.success === false && data.reason === 'need_last_name') {
+          setNeedLastName(true);
+          setTransfers([]);
+          setPickupTime('');
+          setPickupPoint('');
+          setPickupCoords(null);
+          setError(t('please_enter_last_name'));    
+
         } else if (data.success === false && data.reason === 'not_found') {
           setError(t('no_transfer_for_lastname'));
           setShowInquiryForm(true);
@@ -152,6 +168,15 @@ const AirportTransferPrivatePage = () => {
         if (data?.error === 'No exact match found' && data?.suggestion) {
           setError(`${t('did_you_mean')} "${data.suggestion}"?`);
           return;
+        }
+
+        // 👇 Новый универсальный блок
+        if (
+          data?.error &&
+          data.error.toLowerCase().includes('no transfer')
+        ) {
+          console.log('[DEBUG] Отображаем форму запроса, ошибка с сервера:', data.error);
+          setShowInquiryForm(true);
         }
 
         setError(data?.error || t('something_went_wrong'));
@@ -189,6 +214,7 @@ const AirportTransferPrivatePage = () => {
           flight_number: inquiryFlight.trim(),
           message: inquiryMessage.trim(),
           email: inquiryEmail.trim(),
+          language: i18n.language, // ⬅️ ВАЖНО: добавляем текущий язык
         }),
       });
 
@@ -360,9 +386,10 @@ const AirportTransferPrivatePage = () => {
         </button>
       </form>
 
+      {/* 🔹 Ошибка */}
       {error && (
         <div className="transfer-warning-box">
-          {error}
+          {t('no_transfer_found_message')}
         </div>
       )}
 

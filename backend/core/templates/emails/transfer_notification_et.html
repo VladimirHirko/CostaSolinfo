@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; }
+        .box { background-color: #f7f7f7; padding: 20px; border-radius: 8px; }
+        .footer { margin-top: 20px; font-size: 0.9em; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <p><strong>Lugupeetud Costa del Soli ranniku külalised,</strong></p>
+
+        <p>
+            Teie transfeer hotellist <strong>{{ hotel_name|default:"—" }}</strong>
+            on kavandatud kuupäeval <strong>{{ departure_date|default:"—" }}</strong>
+            kell <strong>{{ departure_time|default:"—" }}</strong>.
+        </p>
+
+        {% if pickup_point %}
+            <p><strong>Väljumiskoht:</strong> {{ pickup_point|default:"—" }}</p>
+        {% else %}
+            <p><strong>Väljumiskoht:</strong> ei ole määratud</p>
+        {% endif %}
+
+        {% if map_link %}
+            <p><a href="{{ map_link }}">Ava kaart väljumiskohaga</a></p>
+        {% endif %}
+
+        <p>Kui toimub muudatusi, saadetakse teile uus e-kiri.</p>
+
+        <p>Lugupidamisega,<br><strong>CostaSolinfo</strong> meeskond</p>
+    </div>
+</body>
+</html>

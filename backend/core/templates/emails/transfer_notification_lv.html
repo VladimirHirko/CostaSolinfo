@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; }
+        .box { background-color: #f7f7f7; padding: 20px; border-radius: 8px; }
+        .footer { margin-top: 20px; font-size: 0.9em; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <p><strong>Cienījamie Costa del Sol piekrastes viesi,</strong></p>
+
+        <p>
+            Jūsu transfērs no viesnīcas <strong>{{ hotel_name|default:"—" }}</strong>
+            ir ieplānots <strong>{{ departure_date|default:"—" }}</strong>
+            plkst. <strong>{{ departure_time|default:"—" }}</strong>.
+        </p>
+
+        {% if pickup_point %}
+            <p><strong>Iekāpšanas vieta:</strong> {{ pickup_point|default:"—" }}</p>
+        {% else %}
+            <p><strong>Iekāpšanas vieta:</strong> nav norādīta</p>
+        {% endif %}
+
+        {% if map_link %}
+            <p><a href="{{ map_link }}">Atvērt karti ar iekāpšanas vietu</a></p>
+        {% endif %}
+
+        <p>Ja būs kādas izmaiņas, jūs saņemsiet jaunu e-pasta paziņojumu.</p>
+
+        <p>Ar cieņu,<br><strong>CostaSolinfo</strong> komanda</p>
+    </div>
+</body>
+</html>

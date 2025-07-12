@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; }
+        .box { background-color: #f7f7f7; padding: 20px; border-radius: 8px; }
+        .footer { margin-top: 20px; font-size: 0.9em; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <p><strong>Шановні гості узбережжя Коста-дель-Соль,</strong></p>
+
+        <p>
+            Ваш трансфер з готелю <strong>{{ hotel_name|default:"—" }}</strong>
+            заплановано на <strong>{{ departure_date|default:"—" }}</strong>
+            о <strong>{{ departure_time|default:"—" }}</strong>.
+        </p>
+
+        {% if pickup_point %}
+            <p><strong>Місце відправлення:</strong> {{ pickup_point|default:"—" }}</p>
+        {% else %}
+            <p><strong>Місце відправлення:</strong> не вказано</p>
+        {% endif %}
+
+        {% if map_link %}
+            <p><a href="{{ map_link }}">Відкрити карту з місцем відправлення</a></p>
+        {% endif %}
+
+        <p>Якщо будуть зміни — ви отримаєте новий лист.</p>
+
+        <p>З повагою,<br>Команда <strong>CostaSolinfo</strong></p>
+    </div>
+</body>
+</html>

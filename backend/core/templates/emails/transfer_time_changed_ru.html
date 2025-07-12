@@ -3,19 +3,53 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    body { font-family: Arial, sans-serif; color: #333; }
-    .container { padding: 20px; background: #fff0f0; border: 1px solid #ffcccc; border-radius: 8px; }
-    .header { font-size: 18px; font-weight: bold; color: #cc0000; margin-bottom: 10px; }
-    .content { font-size: 14px; }
+    body {
+      font-family: Arial, sans-serif;
+      color: #000;
+      background-color: #fff;
+    }
+    .container {
+      padding: 20px;
+      background: #fff0f0;
+      border: 1px solid #ffcccc;
+      border-radius: 8px;
+    }
+    .header {
+      font-size: 18px;
+      font-weight: bold;
+      color: #cc0000;
+      margin-bottom: 10px;
+    }
+    .content {
+      font-size: 14px;
+    }
+    .button {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 14px;
+      background-color: #cc0000;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+    }
+    .divider {
+      margin: 20px 0;
+      border-top: 1px solid #cc0000;
+    }
+    a {
+      color: #cc0000;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">Время трансфера изменено</div>
     <div class="content">
-      Уважаемый турист,<br><br>
-      Обратите внимание, что время трансфера из отеля <b>{{ hotel_name }}</b> на дату <b>{{ departure_date }}</b> было изменено.<br>
-      <b>Новое время выезда: {{ new_time }}</b>.<br><br>
+      Уважаемые гости побережья Коста Дель Соль,<br><br>
+
+      Обратите внимание, что время трансфера из отеля <strong>{{ hotel_name }}</strong> на дату <strong>{{ departure_date }}</strong> было изменено.<br>
+      <strong>Новое время выезда:</strong> {{ new_time }}.<br><br>
 
       {% if pickup_point %}
         <strong>Точка отправления:</strong> {{ pickup_point }}<br>
@@ -25,8 +59,16 @@
         <a href="{{ map_link }}">Открыть карту с точкой отправления</a><br><br>
       {% endif %}
 
-      Приносим извинения за возможные неудобства.<br><br>
-      <i>Команда CostaSolinfo</i>
+      <div class="divider"></div>
+
+      Если вы ознакомились с изменениями, пожалуйста, <strong>ответьте на это письмо</strong> или напишите вашему представителю в <strong>WhatsApp</strong>.<br><br>
+
+      Ваш ответ будет принят в обработку автоматически, и представитель сможет подтвердить получение.<br><br>
+
+      Спасибо за понимание!<br>
+      <em>Команда CostaSolinfo</em><br><br>
+
+      <small style="color:#888;">Пожалуйста, не пересылайте это письмо третьим лицам. Оно предназначено только для получателя.</small>
     </div>
   </div>
 </body>

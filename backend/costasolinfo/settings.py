@@ -56,7 +56,9 @@ ROOT_URLCONF = 'costasolinfo.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            os.path.join(BASE_DIR, 'core', 'templates'),
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -158,6 +160,8 @@ DEFAULT_FROM_EMAIL = 'CostaSolinfo.Malaga@gmail.com'
 REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend']
 }
+
+SITE_URL = "http://localhost:8000"
 
 
 

@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
@@ -152,6 +153,10 @@ class TransferNotification(models.Model):
     )
     last_name = models.CharField(max_length=100, blank=True, null=True)
 
+    is_changed = models.BooleanField(default=False, verbose_name="Трансфер изменен")
+    is_confirmed = models.BooleanField(default=False, verbose_name="Клиент подтвердил получение")
+    confirmation_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+
     class Meta:
         verbose_name = _("Transfer Notification")
         verbose_name_plural = _("Transfer Notifications")
@@ -269,6 +274,7 @@ class TransferInquiry(models.Model):
     message = models.TextField(blank=True)
     email = models.EmailField()
     created_at = models.DateTimeField(auto_now_add=True)
+    language = models.CharField(max_length=10, default='ru')
 
     # Новое поле:
     reply = models.TextField(blank=True, verbose_name="Ответ админа")

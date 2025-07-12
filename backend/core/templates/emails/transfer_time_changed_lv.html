@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #000;
+      background-color: #fff;
+    }
+    .container {
+      padding: 20px;
+      background: #fff0f0;
+      border: 1px solid #ffcccc;
+      border-radius: 8px;
+    }
+    .header {
+      font-size: 18px;
+      font-weight: bold;
+      color: #cc0000;
+      margin-bottom: 10px;
+    }
+    .content {
+      font-size: 14px;
+    }
+    .button {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 14px;
+      background-color: #cc0000;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+    }
+    .divider {
+      margin: 20px 0;
+      border-top: 1px solid #cc0000;
+    }
+    a {
+      color: #cc0000;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">Transfēra laiks ir mainīts</div>
+    <div class="content">
+      Cienījamie Kosta del Solas piekrastes viesi,<br><br>
+
+      Lūdzu, ņemiet vērā, ka transfēra laiks no viesnīcas <strong>{{ hotel_name }}</strong> <strong>{{ departure_date }}</strong> datumā ir mainīts.<br>
+      <strong>Jaunais izbraukšanas laiks:</strong> {{ new_time }}.<br><br>
+
+      {% if pickup_point %}
+        <strong>Izbraukšanas vieta:</strong> {{ pickup_point }}<br>
+      {% endif %}
+
+      {% if map_link %}
+        <a href="{{ map_link }}">Atvērt karti ar izbraukšanas vietu</a><br><br>
+      {% endif %}
+
+      <div class="divider"></div>
+
+      Ja esat iepazinies ar izmaiņām, lūdzu, <strong>atbildiet uz šo e-pastu</strong> vai sazinieties ar savu pārstāvi <strong>WhatsApp</strong> lietotnē.<br><br>
+
+      Jūsu atbilde tiks automātiski apstrādāta, un pārstāvis varēs apstiprināt saņemšanu.<br><br>
+
+      Paldies par sapratni!<br>
+      <em>CostaSolinfo komanda</em><br><br>
+
+      <small style="color:#888;">Lūdzu, nepārsūtiet šo e-pastu trešajām personām. Tas ir paredzēts tikai adresātam.</small>
+    </div>
+  </div>
+</body>
+</html>

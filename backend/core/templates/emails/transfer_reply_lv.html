@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f9;
+      padding: 20px;
+      color: #333;
+    }
+    .container {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 10px;
+      max-width: 600px;
+      margin: auto;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h2 {
+      color: #004080;
+      margin-bottom: 20px;
+    }
+    p {
+      font-size: 15px;
+      line-height: 1.6;
+      margin: 10px 0;
+    }
+    .info-block {
+      background: #f0f6ff;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+    .footer {
+      margin-top: 30px;
+      font-size: 13px;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Sveicināti, {{ name }}!</h2>
+
+    <p>Paldies par jūsu transfēra pieprasījumu. Zemāk redzama jūsu sniegtā informācija:</p>
+
+    <div class="info-block">
+      <p>
+        <strong>Viesnīca:</strong> {{ hotel }}<br>
+        <strong>Izbraukšanas datums:</strong> {{ date }}<br>
+        <strong>Lidojums:</strong> {{ flight }}
+      </p>
+    </div>
+
+    {% if reply %}
+      <div class="reply-block">
+        <p><strong>Atbilde no mūsu biroja:</strong></p>
+        <p>{{ reply|linebreaks }}</p>
+      </div>
+    {% else %}
+      <p>Tiklīdz mūsu nodaļa apstrādās jūsu pieprasījumu, jūs saņemsiet e-pastu ar nepieciešamo informāciju.</p>
+    {% endif %}
+
+    <p>Ar cieņu,<br>
+    <strong>CostaSolinfo</strong> komanda</p>
+
+    <div class="footer">
+      Jūs saņēmāt šo e-pastu, jo veicāt pieprasījumu vietnē <a href="https://CostaSolinfo.com" style="color: #007bff;">CostaSolinfo.com</a>
+    </div>
+
+  </div>
+</body>
+</html>

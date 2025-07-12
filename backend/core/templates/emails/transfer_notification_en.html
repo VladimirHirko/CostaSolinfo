@@ -1,17 +1,16 @@
-<!-- transfer_notification_en.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <style>
         body { font-family: Arial, sans-serif; color: #333; }
-        .box { background-color: #f9f9f9; padding: 20px; border-radius: 8px; }
+        .box { background-color: #f7f7f7; padding: 20px; border-radius: 8px; }
         .footer { margin-top: 20px; font-size: 0.9em; color: #777; }
     </style>
 </head>
 <body>
     <div class="box">
-        <p><strong>Dear Guest,</strong></p>
+        <p><strong>Dear Costa Del Sol guests,</strong></p>
 
         <p>
             Your transfer from the hotel <strong>{{ hotel_name|default:"—" }}</strong>
@@ -20,18 +19,18 @@
         </p>
 
         {% if pickup_point %}
-            <p><strong>Departure point:</strong> {{ pickup_point|default:"—" }}</p>
+            <p><strong>Pickup point:</strong> {{ pickup_point|default:"—" }}</p>
         {% else %}
-            <p><strong>Departure point:</strong> Not specified</p>
+            <p><strong>Pickup point:</strong> not specified</p>
         {% endif %}
 
         {% if map_link %}
-            <p><a href="{{ map_link }}">Open map with departure point</a></p>
+            <p><a href="{{ map_link }}">Open map with pickup point</a></p>
         {% endif %}
 
-        <p>If there are any changes, you will receive an updated email.</p>
+        <p>If there are any changes, you will receive a new email.</p>
 
-        <p>Best regards,<br><strong>CostaSolinfo</strong> Team</p>
+        <p>Best regards,<br>The <strong>CostaSolinfo</strong> Team</p>
     </div>
 </body>
 </html>

@@ -323,41 +323,41 @@ class PrivatePickupPointAdmin(admin.ModelAdmin):
         ''')
         return super().changeform_view(request, object_id, form_url, extra_context=extra_context)
 
-# Массовое добавление даты и времени для трансферов
-@admin.register(TransferSchedule)
-class TransferScheduleAdmin(admin.ModelAdmin):
-    list_display = ['transfer_type', 'hotel', 'departure_date', 'departure_time', 'pickup_point', 'passenger_last_name']
-    list_filter = ['transfer_type', 'departure_date']
-    search_fields = ['hotel__name', 'passenger_last_name']
+# # Массовое добавление даты и времени для трансферов
+# @admin.register(TransferSchedule)
+# class TransferScheduleAdmin(admin.ModelAdmin):
+#     list_display = ['transfer_type', 'hotel', 'departure_date', 'departure_time', 'pickup_point', 'passenger_last_name']
+#     list_filter = ['transfer_type', 'departure_date']
+#     search_fields = ['hotel__name', 'passenger_last_name']
 
-    def save_formset(self, request, form, formset, change):
-        """
-        При сохранении каждого TransferSchedule внутри группы —
-        автоматически подставляем дату и тип трансфера из родительской группы.
-        """
-        instances = formset.save(commit=False)
-        for obj in instances:
-            if form.instance:  # это объект TransferScheduleGroup
-                obj.group = form.instance
-                obj.departure_date = form.instance.date
-                if not obj.transfer_type:
-                    obj.transfer_type = form.instance.transfer_type
-            obj.save()
-        formset.save_m2m()
+#     def save_formset(self, request, form, formset, change):
+#         """
+#         При сохранении каждого TransferSchedule внутри группы —
+#         автоматически подставляем дату и тип трансфера из родительской группы.
+#         """
+#         instances = formset.save(commit=False)
+#         for obj in instances:
+#             if form.instance:  # это объект TransferScheduleGroup
+#                 obj.group = form.instance
+#                 obj.departure_date = form.instance.date
+#                 if not obj.transfer_type:
+#                     obj.transfer_type = form.instance.transfer_type
+#             obj.save()
+#         formset.save_m2m()
 
-@admin.register(TransferScheduleItem)
-class TransferScheduleItemAdmin(admin.ModelAdmin):
-    list_display = ('hotel', 'group', 'time', 'tourist_last_name')
-    list_filter = ('group', 'hotel')
-    search_fields = ('tourist_last_name',)
+# @admin.register(TransferScheduleItem)
+# class TransferScheduleItemAdmin(admin.ModelAdmin):
+#     list_display = ('hotel', 'group', 'time', 'tourist_last_name')
+#     list_filter = ('group', 'hotel')
+#     search_fields = ('tourist_last_name',)
 
-# Inline для TransferSchedule
-class TransferScheduleInline(admin.TabularInline):
-    model = TransferSchedule
-    extra = 1  # сколько пустых строк по умолчанию
-    autocomplete_fields = ['hotel', 'pickup_point']
-    fields = ('hotel', 'departure_time', 'pickup_point', 'passenger_last_name')
-    show_change_link = True
+# # Inline для TransferSchedule
+# class TransferScheduleInline(admin.TabularInline):
+#     model = TransferSchedule
+#     extra = 1  # сколько пустых строк по умолчанию
+#     autocomplete_fields = ['hotel', 'pickup_point']
+#     fields = ('hotel', 'departure_time', 'pickup_point', 'passenger_last_name')
+#     show_change_link = True
 
 class TransferScheduleItemInline(admin.TabularInline):
     model = TransferSchedule
@@ -511,9 +511,23 @@ class TransferChangeLogAdmin(admin.ModelAdmin):
 # Админка для нотификаций по трансферам
 @admin.register(TransferNotification)
 class TransferNotificationAdmin(admin.ModelAdmin):
-    list_display = ('email', 'hotel', 'departure_date', 'transfer_type', 'language')
-    list_filter = ('transfer_type', 'departure_date', 'hotel', 'language')
+    list_display = (
+        'email', 'hotel', 'departure_date', 'transfer_type', 'language',
+        'confirmation_token',  # 👈 ДОБАВЬ ЭТУ СТРОКУ
+        'is_changed', 'is_confirmed_colored'
+    )
+    list_filter = ('transfer_type', 'departure_date', 'hotel', 'language', 
+        'is_changed', 'is_confirmed'
+    )
+
     search_fields = ('email',)
+
+    def is_confirmed_colored(self, obj):
+        color = 'green' if obj.is_confirmed else 'red'
+        text = 'Да' if obj.is_confirmed else 'Нет'
+        return format_html('<span style="color: {};">{}</span>', color, text)
+    is_confirmed_colored.short_description = "Клиент подтвердил"
+
 
 @admin.register(TransferInquiryLog)
 class TransferInquiryLogAdmin(admin.ModelAdmin):
@@ -550,7 +564,7 @@ class TransferInquiryAdmin(admin.ModelAdmin):
 
     def _send_email(self, inquiry):
         subject = "Ответ на ваш запрос по трансферу"
-        from_email = "info@costasolinfo.com"
+        from_email = "CostaSolinfo.Malaga@gmail.com"
         to_email = [inquiry.email]
 
         context = {
@@ -561,7 +575,13 @@ class TransferInquiryAdmin(admin.ModelAdmin):
             'flight': inquiry.flight_number,
         }
 
-        html_content = render_to_string("emails/transfer_reply.html", context)
+        # === ЯЗЫК ===
+        supported_languages = ['ru', 'en', 'es', 'lv', 'lt', 'et', 'uk']
+        lang = inquiry.language if inquiry.language in supported_languages else 'ru'
+        template_path = f"emails/transfer_reply_{lang}.html"
+
+        # === Рендер шаблона ===
+        html_content = render_to_string(template_path, context)
         text_content = inquiry.reply
 
         email = EmailMultiAlternatives(subject, text_content, from_email, to_email)
@@ -578,3 +598,4 @@ class TransferInquiryAdmin(admin.ModelAdmin):
             email=inquiry.email,
             reply_content=inquiry.reply
         )
+

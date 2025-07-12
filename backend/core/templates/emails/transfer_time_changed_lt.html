@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #000;
+      background-color: #fff;
+    }
+    .container {
+      padding: 20px;
+      background: #fff0f0;
+      border: 1px solid #ffcccc;
+      border-radius: 8px;
+    }
+    .header {
+      font-size: 18px;
+      font-weight: bold;
+      color: #cc0000;
+      margin-bottom: 10px;
+    }
+    .content {
+      font-size: 14px;
+    }
+    .button {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 14px;
+      background-color: #cc0000;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+    }
+    .divider {
+      margin: 20px 0;
+      border-top: 1px solid #cc0000;
+    }
+    a {
+      color: #cc0000;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">Pervežimo laikas buvo pakeistas</div>
+    <div class="content">
+      Gerbiami Kosta del Sol pakrantės svečiai,<br><br>
+
+      Atkreipkite dėmesį, kad pervežimo iš viešbučio <strong>{{ hotel_name }}</strong> laikas <strong>{{ departure_date }}</strong> buvo pakeistas.<br>
+      <strong>Naujas išvykimo laikas:</strong> {{ new_time }}.<br><br>
+
+      {% if pickup_point %}
+        <strong>Išvykimo vieta:</strong> {{ pickup_point }}<br>
+      {% endif %}
+
+      {% if map_link %}
+        <a href="{{ map_link }}">Atidaryti žemėlapį su išvykimo vieta</a><br><br>
+      {% endif %}
+
+      <div class="divider"></div>
+
+      Jei susipažinote su pakeitimais, prašome <strong>atsakyti į šį el. laišką</strong> arba parašyti savo atstovui per <strong>WhatsApp</strong>.<br><br>
+
+      Jūsų atsakymas bus apdorotas automatiškai ir atstovas galės patvirtinti gavimą.<br><br>
+
+      Ačiū už supratingumą!<br>
+      <em>CostaSolinfo komanda</em><br><br>
+
+      <small style="color:#888;">Prašome neperadresuoti šio laiško kitiems asmenims. Jis skirtas tik gavėjui.</small>
+    </div>
+  </div>
+</body>
+</html>

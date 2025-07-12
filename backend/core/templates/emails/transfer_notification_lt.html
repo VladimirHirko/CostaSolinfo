@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; }
+        .box { background-color: #f7f7f7; padding: 20px; border-radius: 8px; }
+        .footer { margin-top: 20px; font-size: 0.9em; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <p><strong>Gerbiami Kosta del Sol pakrantės svečiai,</strong></p>
+
+        <p>
+            Jūsų pervežimas iš viešbučio <strong>{{ hotel_name|default:"—" }}</strong>
+            numatytas <strong>{{ departure_date|default:"—" }}</strong>
+            <strong>{{ departure_time|default:"—" }}</strong> val.
+        </p>
+
+        {% if pickup_point %}
+            <p><strong>Išvykimo taškas:</strong> {{ pickup_point|default:"—" }}</p>
+        {% else %}
+            <p><strong>Išvykimo taškas:</strong> nenurodytas</p>
+        {% endif %}
+
+        {% if map_link %}
+            <p><a href="{{ map_link }}">Atidaryti žemėlapį su išvykimo tašku</a></p>
+        {% endif %}
+
+        <p>Jei bus kokių nors pakeitimų, gausite naują el. laišką.</p>
+
+        <p>Pagarbiai,<br><strong>CostaSolinfo</strong> komanda</p>
+    </div>
+</body>
+</html>

@@ -20,13 +20,20 @@ from .serializers import (
     HotelSerializer, SimpleHotelSerializer, TransferNotificationCreateSerializer,
     TransferInquirySerializer
     )
-from django.core.mail import send_mail
+from django.core.mail import send_mail, EmailMultiAlternatives
 from django.contrib import admin
 from django.urls import path
 from django.utils.translation import activate, gettext as _
 from django.shortcuts import render, redirect
 from .forms import BulkTransferScheduleForm
 from .models import Hotel, TransferSchedule
+from django.template.loader import render_to_string
+
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from Levenshtein import distance as levenshtein_distance
+from .models import TransferScheduleGroup, TransferSchedule, PickupPoint, Hotel
 
 # Главное правило: RetrieveAPIView + queryset + serializer_class
 
@@ -177,12 +184,6 @@ def transfer_info(request):
         return Response({"error": "No transfer found for given hotel and date"}, status=status.HTTP_404_NOT_FOUND)
 
 
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from Levenshtein import distance as levenshtein_distance
-from .models import TransferScheduleGroup, TransferSchedule, PickupPoint, Hotel
-
-
 @api_view(['GET'])
 def transfer_schedule_view(request):
     hotel_id = request.GET.get('hotel_id')
@@ -209,42 +210,50 @@ def transfer_schedule_view(request):
 
         # === PRIVATE TRANSFER ===
         if transfer_type == 'private':
-            if last_name:
-                exact = schedules.filter(passenger_last_name__iexact=last_name).first()
-                if exact:
-                    pp = exact.pickup_point or PickupPoint.objects.filter(
-                        hotel=exact.hotel,
-                        transfer_type='private'
-                    ).first()
-                    return Response({
-                        "success": True,
-                        "pickup_time": exact.departure_time.strftime("%H:%M"),
-                        "pickup_point": pp.name if pp else "—",
-                        "pickup_lat": pp.latitude if pp else None,
-                        "pickup_lng": pp.longitude if pp else None,
-                    })
-
-
-                # Try fuzzy match
-                candidates = []
-                for ln in schedules.values_list('passenger_last_name', flat=True):
-                    if ln:
-                        dist = levenshtein_distance(last_name, ln.lower())
-                        if 0 < dist <= 3:
-                            candidates.append((dist, ln))
-                if candidates:
-                    candidates.sort()
-                    return Response({
-                        "success": False,
-                        "reason": "no_exact_match",
-                        "suggestion": candidates[0][1]
-                    })
-
+            if not last_name:
                 return Response({
                     "success": False,
-                    "reason": "not_found",
-                    "message": "Фамилия не найдена. Проверьте правильность написания."
+                    "reason": "need_last_name",
+                    "message": "Укажите фамилию для получения информации о трансфере."
+                }, status=200)
+
+            # === Точное совпадение ===
+            exact = schedules.filter(passenger_last_name__iexact=last_name).first()
+            if exact:
+                pp = exact.pickup_point or PickupPoint.objects.filter(
+                    hotel=exact.hotel,
+                    transfer_type='private'
+                ).first()
+                return Response({
+                    "success": True,
+                    "pickup_time": exact.departure_time.strftime("%H:%M"),
+                    "pickup_point": pp.name if pp else "—",
+                    "pickup_lat": pp.latitude if pp else None,
+                    "pickup_lng": pp.longitude if pp else None,
                 })
+
+            # === Fuzzy поиск по фамилии ===
+            candidates = []
+            for ln in schedules.values_list('passenger_last_name', flat=True):
+                if ln:
+                    dist = levenshtein_distance(last_name, ln.lower())
+                    if 0 < dist <= 3:
+                        candidates.append((dist, ln))
+            if candidates:
+                candidates.sort()
+                return Response({
+                    "success": False,
+                    "reason": "no_exact_match",
+                    "suggestion": candidates[0][1]
+                })
+
+            # === Фамилия не найдена ===
+            return Response({
+                "success": False,
+                "reason": "not_found",
+                "message": "Фамилия не найдена. Проверьте правильность написания."
+            })
+
 
             if schedules.count() > 1:
                 return Response({
@@ -413,6 +422,25 @@ class TransferNotificationViewSet(viewsets.ViewSet):
         return Response(serializer.errors, status=400)
 
 
+@api_view(['GET'])
+def confirm_transfer_notification(request, token):
+    try:
+        notif = TransferNotification.objects.get(confirmation_token=token)
+        notif.is_confirmed = True
+        notif.save()
+        return render(request, 'confirmation_success.html')  # HTML-шаблон
+    except TransferNotification.DoesNotExist:
+        return render(request, 'confirmation_error.html')  # HTML-шаблон с ошибкой
+
+
+@api_view(['POST'])
+def notify_transfer_change(request):
+    serializer = TransferNotificationCreateSerializer(data=request.data)
+    if serializer.is_valid():
+        instance = serializer.save()
+        send_transfer_update_email(instance)
+        return Response({"detail": _("Письмо отправлено с просьбой подтвердить.")})
+    return Response(serializer.errors, status=400)
 
         
 # Вьюшка обратной связи по индивидуальтным трансферам
@@ -423,20 +451,40 @@ class TransferInquiryViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         inquiry = serializer.save()
-        # Отправка подтверждения туристу
-        send_mail(
-            subject="Ваш запрос принят",
-            message=(
-                f"Уважаемый(ая) {inquiry.last_name},\n\n"
-                f"Мы получили ваш запрос по трансферу.\n"
-                f"Дата: {inquiry.departure_date}\n"
-                f"Отель: {inquiry.hotel.name if inquiry.hotel else '—'}\n"
-                f"Номер рейса: {inquiry.flight_number or '—'}\n\n"
-                f"Мы свяжемся с вами в ближайшее время."
-            ),
-            from_email="info@costasolinfo.com",
-            recipient_list=[inquiry.email],
+
+        # === Определяем язык письма ===
+        supported_languages = ['ru', 'en', 'es', 'lv', 'lt', 'et', 'uk']
+        lang = inquiry.language if inquiry.language in supported_languages else 'ru'
+        template_name = f"emails/transfer_reply_{lang}.html"
+
+        # === Контекст шаблона ===
+        context = {
+            'name': inquiry.last_name,
+            'hotel': inquiry.hotel.name if inquiry.hotel else '—',
+            'date': inquiry.departure_date,
+            'flight': inquiry.flight_number or '—',
+            'reply': '',  # или текст по умолчанию, если нужно
+        }
+
+        html_content = render_to_string(template_name, context)
+        text_content = (
+            f"Уважаемый(ая) {inquiry.last_name},\n\n"
+            f"Мы получили ваш запрос по трансферу.\n"
+            f"Дата: {inquiry.departure_date}\n"
+            f"Отель: {inquiry.hotel.name if inquiry.hotel else '—'}\n"
+            f"Номер рейса: {inquiry.flight_number or '—'}\n\n"
+            f"Мы свяжемся с вами в ближайшее время."
         )
+
+        # === Отправка письма ===
+        email = EmailMultiAlternatives(
+            subject="Ваш запрос принят",
+            body=text_content,
+            from_email="CostaSolinfo.Malaga@gmail.com",
+            to=[inquiry.email],
+        )
+        email.attach_alternative(html_content, "text/html")
+        email.send()
 
 
 class QuestionView(RetrieveAPIView):

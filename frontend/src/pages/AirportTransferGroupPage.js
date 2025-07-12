@@ -91,16 +91,18 @@ const AirportTransferGroupPage = () => {
         setPickupTime('');
         setPickupPoint('');
         setPickupCoords(null);
+
         if (
-          data.error === 'No transfer schedule found' ||
-          data.error === 'No transfer found'
+          data.error &&
+          data.error.toLowerCase().includes('no transfer')
         ) {
+          console.log('[DEBUG] Отображаем форму запроса, ошибка с сервера:', data.error);
           setShowInquiryForm(true);
         }
 
-
         setError(data.error || t('something_went_wrong'));
       }
+
     } catch (err) {
       console.error(err);
       setError(t('something_went_wrong'));
@@ -131,6 +133,7 @@ const AirportTransferGroupPage = () => {
           flight_number: inquiryFlight.trim(),
           message: inquiryMessage.trim(),
           email: inquiryEmail.trim(),
+          language: i18n.language, // ⬅️ ВАЖНО: добавляем текущий язык
         }),
       });
 

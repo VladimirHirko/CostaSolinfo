@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #000;
+      background-color: #fff;
+    }
+    .container {
+      padding: 20px;
+      background: #fff0f0;
+      border: 1px solid #ffcccc;
+      border-radius: 8px;
+    }
+    .header {
+      font-size: 18px;
+      font-weight: bold;
+      color: #cc0000;
+      margin-bottom: 10px;
+    }
+    .content {
+      font-size: 14px;
+    }
+    .button {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 14px;
+      background-color: #cc0000;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+    }
+    .divider {
+      margin: 20px 0;
+      border-top: 1px solid #cc0000;
+    }
+    a {
+      color: #cc0000;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">Transfeeri aeg on muutunud</div>
+    <div class="content">
+      Lugupeetud Costa del Soli külalised,<br><br>
+
+      Palun pange tähele, et transfeeri aeg hotellist <strong>{{ hotel_name }}</strong> kuupäeval <strong>{{ departure_date }}</strong> on muutunud.<br>
+      <strong>Uus väljumisaeg:</strong> {{ new_time }}.<br><br>
+
+      {% if pickup_point %}
+        <strong>Väljumispunkt:</strong> {{ pickup_point }}<br>
+      {% endif %}
+
+      {% if map_link %}
+        <a href="{{ map_link }}">Ava kaart väljumispunktiga</a><br><br>
+      {% endif %}
+
+      <div class="divider"></div>
+
+      Kui olete muudatustega tutvunud, siis palun <strong>vastake sellele e-kirjale</strong> või kirjutage oma esindajale <strong>WhatsAppis</strong>.<br><br>
+
+      Teie vastus töödeldakse automaatselt ning esindaja saab kinnitada vastuvõtmise.<br><br>
+
+      Täname mõistva suhtumise eest!<br>
+      <em>CostaSolinfo meeskond</em><br><br>
+
+      <small style="color:#888;">Palun ärge edastage seda e-kirja kolmandatele isikutele. See on mõeldud ainult adressaadile.</small>
+    </div>
+  </div>
+</body>
+</html>

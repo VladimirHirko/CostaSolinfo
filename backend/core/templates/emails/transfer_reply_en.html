@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f9;
+      padding: 20px;
+      color: #333;
+    }
+    .container {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 10px;
+      max-width: 600px;
+      margin: auto;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h2 {
+      color: #004080;
+      margin-bottom: 20px;
+    }
+    p {
+      font-size: 15px;
+      line-height: 1.6;
+      margin: 10px 0;
+    }
+    .info-block {
+      background: #f0f6ff;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+    .reply-block {
+      background: #e0f0ff;
+      border-left: 4px solid #007bff;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+    .footer {
+      margin-top: 30px;
+      font-size: 13px;
+      color: #777;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Hello, {{ name }}!</h2>
+
+    <p>Thank you for your transfer request. Below is the information you provided:</p>
+
+    <div class="info-block">
+      <p>
+        <strong>Hotel:</strong> {{ hotel }}<br>
+        <strong>Departure date:</strong> {{ date }}<br>
+        <strong>Flight:</strong> {{ flight }}
+      </p>
+    </div>
+
+    {% if reply %}
+      <div class="reply-block">
+        <p><strong>Reply from our office:</strong></p>
+        <p>{{ reply|linebreaks }}</p>
+      </div>
+    {% else %}
+      <p>Once our department processes your request, you will receive a follow-up email with all necessary information.</p>
+    {% endif %}
+
+    <p>Best regards,<br>
+    The <strong>CostaSolinfo</strong> Team</p>
+
+    <div class="footer">
+      You received this email because you submitted a request on the <a href="https://CostaSolinfo.com" style="color: #007bff;">CostaSolinfo.com</a> website.
+    </div>
+  </div>
+</body>
+</html>

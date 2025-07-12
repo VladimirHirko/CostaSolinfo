@@ -9,7 +9,8 @@ from core.views import (
     HomepageView, InfoMeetingView, AirportTransferView, QuestionView,
     ContactInfoView, AboutUsView, ExcursionView, TransferScheduleLookupView,
     page_banner_api, BulkTransferScheduleForm, transfer_info, transfer_schedule_view,
-    available_hotels_for_transfer, TransferNotificationViewSet, TransferInquiryViewSet
+    available_hotels_for_transfer, TransferNotificationViewSet, TransferInquiryViewSet,
+    confirm_transfer_notification
 )
 
 transfer_notification_view = TransferNotificationViewSet.as_view({'post': 'create'})
@@ -33,6 +34,7 @@ urlpatterns = [
     path('api/transfer-info/', transfer_info, name='transfer_info'),
     path('api/transfer-schedule/', transfer_schedule_view, name='transfer_schedule'),
     path('api/transfer-notifications/', transfer_notification_view, name='transfer-notification'),
+    path('api/transfer-confirm/<uuid:token>/', confirm_transfer_notification, name='transfer_confirm'),
     path('api/available-hotels/', available_hotels_for_transfer, name='available_hotels_for_transfer'),
     path('api/question/', QuestionView.as_view(), name='question'),
     path('api/contact-info/', ContactInfoView.as_view(), name='contact-info'),

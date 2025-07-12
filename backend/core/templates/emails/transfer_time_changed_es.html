@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      color: #000;
+      background-color: #fff;
+    }
+    .container {
+      padding: 20px;
+      background: #fff0f0;
+      border: 1px solid #ffcccc;
+      border-radius: 8px;
+    }
+    .header {
+      font-size: 18px;
+      font-weight: bold;
+      color: #cc0000;
+      margin-bottom: 10px;
+    }
+    .content {
+      font-size: 14px;
+    }
+    .button {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 14px;
+      background-color: #cc0000;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+    }
+    .divider {
+      margin: 20px 0;
+      border-top: 1px solid #cc0000;
+    }
+    a {
+      color: #cc0000;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">Hora de traslado modificada</div>
+    <div class="content">
+      Estimados huéspedes de la Costa del Sol,<br><br>
+
+      Les informamos que la hora del traslado desde el hotel <strong>{{ hotel_name }}</strong> para la fecha <strong>{{ departure_date }}</strong> ha sido modificada.<br>
+      <strong>Nueva hora de salida:</strong> {{ new_time }}.<br><br>
+
+      {% if pickup_point %}
+        <strong>Punto de recogida:</strong> {{ pickup_point }}<br>
+      {% endif %}
+
+      {% if map_link %}
+        <a href="{{ map_link }}">Abrir mapa con el punto de recogida</a><br><br>
+      {% endif %}
+
+      <div class="divider"></div>
+
+      Si ha leído esta información, por favor <strong>responda a este correo electrónico</strong> o escriba a su representante por <strong>WhatsApp</strong>.<br><br>
+
+      Su respuesta será procesada automáticamente y el representante podrá confirmar la recepción.<br><br>
+
+      ¡Gracias por su comprensión!<br>
+      <em>Equipo de CostaSolinfo</em><br><br>
+
+      <small style="color:#888;">Por favor, no reenvíe este mensaje a terceros. Está destinado únicamente al destinatario.</small>
+    </div>
+  </div>
+</body>
+</html>
