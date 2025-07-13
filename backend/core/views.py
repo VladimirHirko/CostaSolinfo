@@ -10,7 +10,8 @@ from core.models import (
     Homepage, InfoMeeting, AirportTransfer, Question, 
     ContactInfo, AboutUs, Excursion, TransferSchedule, Hotel,
     PageBanner, Hotel, PickupPoint, TransferNotification,
-    TransferInquiry, TransferScheduleItem, TransferScheduleGroup
+    TransferInquiry, TransferScheduleItem, TransferScheduleGroup,
+    PrivacyPolicy
     )
 from core.utils import send_html_email
 from .serializers import (
@@ -18,12 +19,12 @@ from .serializers import (
     QuestionSerializer, ContactInfoSerializer, AboutUsSerializer, ExcursionSerializer,
     TransferScheduleRequestSerializer, TransferScheduleResponseSerializer,
     HotelSerializer, SimpleHotelSerializer, TransferNotificationCreateSerializer,
-    TransferInquirySerializer
+    TransferInquirySerializer, PrivacyPolicySerializer
     )
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.contrib import admin
 from django.urls import path
-from django.utils.translation import activate, gettext as _
+from django.utils.translation import activate, get_language, gettext as _
 from django.shortcuts import render, redirect
 from .forms import BulkTransferScheduleForm
 from .models import Hotel, TransferSchedule
@@ -521,3 +522,17 @@ def hotel_search(request):
     search = request.GET.get('search', '')
     hotels = Hotel.objects.filter(name__icontains=search).values('id', 'name')[:10]
     return Response(list(hotels))
+
+
+# Политика конфиденциальности
+class PrivacyPolicyView(APIView):
+    def get(self, request):
+        lang = request.GET.get('lang', 'en')
+        try:
+            policy = PrivacyPolicy.objects.get(language_code=lang)
+            return Response({'content': policy.content})
+        except PrivacyPolicy.DoesNotExist:
+            return Response({'content': ''})
+
+
+

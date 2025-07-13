@@ -2,6 +2,7 @@ import uuid
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
+from ckeditor.fields import RichTextField
 
 TRANSFER_TYPE_CHOICES = [
         ('group', 'Групповой'),
@@ -385,3 +386,29 @@ class Excursion(models.Model):
     class Meta:
         verbose_name = "Экскурсия"
         verbose_name_plural = "Экскурсии"
+
+
+
+
+
+
+# Модель политики конфиденциальности
+from django.db import models
+
+class PrivacyPolicy(models.Model):
+    LANGUAGE_CHOICES = [
+        ('ru', 'Русский'),
+        ('en', 'English'),
+        ('es', 'Español'),
+        ('lt', 'Lietuvių'),
+        ('lv', 'Latviešu'),
+        ('et', 'Eesti'),
+        ('uk', 'Українська'),
+    ]
+
+    language_code = models.CharField(max_length=5, choices=LANGUAGE_CHOICES, unique=True)
+    content = RichTextField(verbose_name='Текст политики')
+
+    def __str__(self):
+        return f"Политика конфиденциальности ({self.get_language_code_display()})"
+

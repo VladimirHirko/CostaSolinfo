@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import PageBanner from '../components/PageBanner';
 import DatePicker from 'react-datepicker';
 import TransferMap from '../components/TransferMap';
+import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import 'react-datepicker/dist/react-datepicker.css';
 
 const AirportTransferGroupPage = () => {
@@ -31,8 +32,10 @@ const AirportTransferGroupPage = () => {
   const [inquirySuggestionsVisible, setInquirySuggestionsVisible] = useState(false);
 
   const [email, setEmail] = useState('');
+  const [subscriberLastName, setSubscriberLastName] = useState('');
   const [checkboxAccepted, setCheckboxAccepted] = useState(false);
   const [emailSentMessage, setEmailSentMessage] = useState('');
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
 
   const [error, setError] = useState('');
 
@@ -202,7 +205,8 @@ const AirportTransferGroupPage = () => {
           hotel: hotelId,  // ✅ Важно: заменили hotel_id на hotel
           transfer_type: 'group',
           departure_date: dateStr,
-          language: i18n.language
+          language: i18n.language,
+          last_name: subscriberLastName.trim(), // ⬅️ добавили фамилию
         })
       });
 
@@ -220,6 +224,10 @@ const AirportTransferGroupPage = () => {
       setEmailSentMessage(t('email_send_error'));
     }
   };
+
+  const isValidEmail = (email) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
 
 
 
@@ -273,80 +281,6 @@ const AirportTransferGroupPage = () => {
         <div className="transfer-warning-box">
           {t('no_transfer_found_message')}
         </div>
-      )}
-
-
-      {showInquiryForm && (
-        <form
-          onSubmit={handleInquirySubmit}
-          className="transfer-form left-aligned inquiry-form-animated"
-          style={{ marginTop: '20px' }}
-        >
-          <label>{t('your_last_name')}</label>
-          <input
-            type="text"
-            value={inquiryLastName}
-            onChange={(e) => setInquiryLastName(e.target.value)}
-            className="transfer-input"
-          />
-
-          <label>{t('your_hotel')}</label>
-          <div className="autocomplete-wrapper">
-            <input
-              type="text"
-              value={inquiryHotel}
-              onChange={(e) => setInquiryHotel(e.target.value)}
-              placeholder={t('your_hotel')}
-              className="transfer-input"
-            />
-            {inquiryHotelSuggestions.length > 0 && !inquiryHotelSuggestions.some(h => h.name === inquiryHotel) && (
-              <ul className="autocomplete-list">
-                {inquiryHotelSuggestions.map((item) => (
-                  <li key={item.id} onMouseDown={() => handleSelectInquiryHotel(item.name, item.id)}>
-                    {item.name}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-
-          <label>{t('departure_date')}</label>
-          <DatePicker
-            selected={inquiryDate}
-            onChange={(date) => setInquiryDate(date)}
-            placeholderText={t('select_date')}
-            className="transfer-input"
-            dateFormat="yyyy-MM-dd"
-          />
-
-          <label>{t('flight_number')}</label>
-          <input
-            type="text"
-            value={inquiryFlight}
-            onChange={(e) => setInquiryFlight(e.target.value)}
-            className="transfer-input"
-          />
-
-          <label>{t('question')}</label>
-          <textarea
-            value={inquiryMessage}
-            onChange={(e) => setInquiryMessage(e.target.value)}
-            className="transfer-input"
-          />
-
-          <label>{t('your_email')}</label>
-          <input
-            type="email"
-            value={inquiryEmail}
-            onChange={(e) => setInquiryEmail(e.target.value)}
-            className="transfer-input"
-          />
-
-          <button className="transfer-button" style={{ marginTop: '15px' }}>
-            {t('send_request')}
-          </button>
-        </form>
       )}
 
       {inquirySuccessMessage && !pickupTime && (
@@ -419,6 +353,7 @@ const AirportTransferGroupPage = () => {
               />
 
               <label>{t('your_email')}</label>
+
               <input
                 type="email"
                 value={inquiryEmail}
@@ -446,32 +381,90 @@ const AirportTransferGroupPage = () => {
               <h3>{t('want_to_receive_email')}</h3>
               <p>{t('email_info_text')}</p>
 
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t('enter_email')}
-                className="transfer-input"
-                required
-              />
+              {/* 📨 Email */}
+              <div style={{ maxWidth: '320px', margin: '0 auto', textAlign: 'left' }}>
+                <label
+                  style={{
+                    fontWeight: 'bold',
+                    display: 'block',
+                    marginBottom: '6px'
+                  }}
+                >
+                  {t('enter_your_email_label')}
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t('enter_email')}
+                  className="transfer-input"
+                  required
+                />
+              </div>
 
+              {/* 👤 Фамилия */}
+              <div style={{ maxWidth: '320px', margin: '15px auto 0', textAlign: 'left' }}>
+                <label
+                  style={{
+                    fontWeight: 'bold',
+                    display: 'block',
+                    marginBottom: '6px'
+                  }}
+                >
+                  {t('enter_your_lastname_label')}
+                </label>
+                <input
+                  type="text"
+                  value={subscriberLastName}
+                  onChange={(e) => setSubscriberLastName(e.target.value)}
+                  placeholder={t('your_last_name')}
+                  className="transfer-input"
+                  required
+                />
+              </div>
+
+              {/* ✅ Checkbox */}
               <div style={{ marginTop: '10px' }}>
                 <input
                   type="checkbox"
                   checked={checkboxAccepted}
                   onChange={(e) => setCheckboxAccepted(e.target.checked)}
                   id="consent"
+                  onClick={(e) => e.stopPropagation()} // не даёт всплытию перейти к label
                 />
-                <label htmlFor="consent" style={{ marginLeft: '8px' }}>
-                  {t('consent_text')}
+                <label
+                  htmlFor="consent"
+                  style={{ marginLeft: '8px', cursor: 'pointer' }}
+                  onClick={() => setShowPolicyModal(true)}
+                >
+                  {t('i_agree_with')}{' '}
+                  <span style={{ color: 'blue', textDecoration: 'underline' }}>
+                    {t('terms_and_privacy')}
+                  </span>
                 </label>
               </div>
 
+              <PrivacyPolicyModal
+                isOpen={showPolicyModal}
+                onClose={() => setShowPolicyModal(false)}
+              />
+
+              {/* 📩 Кнопка */}
               <button
                 onClick={handleEmailSubmit}
                 className="transfer-button"
-                style={{ marginTop: '15px' }}
-                disabled={!checkboxAccepted || !email}
+                style={{
+                  marginTop: '20px',
+                  backgroundColor: (!checkboxAccepted || !isValidEmail(email) || !subscriberLastName) ? '#ccc' : '#00aaff',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '6px',
+                  fontSize: '16px',
+                  cursor: (!checkboxAccepted || !isValidEmail(email) || !subscriberLastName) ? 'not-allowed' : 'pointer',
+                  transition: '0.3s ease',
+                }}
+                disabled={!checkboxAccepted || !isValidEmail(email) || !subscriberLastName}
               >
                 {t('send_to_email')}
               </button>
@@ -481,6 +474,7 @@ const AirportTransferGroupPage = () => {
               )}
             </div>
           )}
+
         </div>
       )}
     </div>

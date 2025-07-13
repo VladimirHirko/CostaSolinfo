@@ -14,8 +14,10 @@ from .models import (
     Region, PageBanner, GroupTransferPickupPoint, PrivateTransferPickupPoint,
     TransferSchedule, TransferScheduleGroup, TransferNotification,
     TransferInquiry, TransferInquiryLog, TransferScheduleItem,
-    TransferChangeLog
+    TransferChangeLog, PrivacyPolicy, Homepage
 )
+from django import forms
+from ckeditor.widgets import CKEditorWidget
 from django.urls import path
 from django.utils.safestring import mark_safe
 from django.utils.html import format_html
@@ -31,8 +33,25 @@ class PageBannerAdmin(admin.ModelAdmin):
     search_fields = ('page', 'title_en', 'title_ru')
 
 # Главная страница
+class HomepageAdminForm(forms.ModelForm):
+    class Meta:
+        model = Homepage
+        fields = '__all__'
+        widgets = {
+            'subtitle': CKEditorWidget(),  # пример
+            'subtitle_ru': CKEditorWidget(),
+            'subtitle_en': CKEditorWidget(),
+            'subtitle_es': CKEditorWidget(),
+            'subtitle_lv': CKEditorWidget(),
+            'subtitle_lt': CKEditorWidget(),
+            'subtitle_uk': CKEditorWidget(),
+            'subtitle_et': CKEditorWidget(),
+            # Добавь другие поля, которые хочешь сделать форматируемыми
+        }
+
 @admin.register(Homepage)
 class HomepageAdmin(admin.ModelAdmin):
+    form = HomepageAdminForm
     list_display = ('title',)
 
 # Инфо встреча
@@ -60,6 +79,21 @@ class ContactInfoAdmin(admin.ModelAdmin):
 @admin.register(AboutUs)
 class AboutUsAdmin(admin.ModelAdmin):
     list_display = ('title',)
+
+class PrivacyPolicyAdminForm(forms.ModelForm):
+    class Meta:
+        model = PrivacyPolicy
+        fields = '__all__'
+        widgets = {
+            'content': CKEditorWidget(),
+        }
+
+# Политика конфиденциальности
+@admin.register(PrivacyPolicy)
+class PrivacyPolicyAdmin(admin.ModelAdmin):
+    list_display = ('language_code',)
+    ordering = ('language_code',)
+    form = PrivacyPolicyAdminForm
 
 # Точки сбора по трансферам
 class PickupPointInline(admin.TabularInline):

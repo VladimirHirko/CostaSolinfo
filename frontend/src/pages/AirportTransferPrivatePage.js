@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import PageBanner from '../components/PageBanner';
 import DatePicker from 'react-datepicker';
 import TransferMap from '../components/TransferMap';
+import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import 'react-datepicker/dist/react-datepicker.css';
 
 const AirportTransferPrivatePage = () => {
@@ -40,6 +41,8 @@ const AirportTransferPrivatePage = () => {
   const [transferError, setTransferError] = useState('');
   const [selectedHotel, setSelectedHotel] = useState(null);
   const [departureDate, setDepartureDate] = useState('');
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
+
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -345,6 +348,9 @@ const AirportTransferPrivatePage = () => {
     }
   };
 
+  const isValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+
   return (
     <div className="page-container">
       <PageBanner page="private_transfer" />
@@ -389,10 +395,9 @@ const AirportTransferPrivatePage = () => {
       {/* 🔹 Ошибка */}
       {error && (
         <div className="transfer-warning-box">
-          {t('no_transfer_found_message')}
+          {error}
         </div>
       )}
-
 
       {needLastName && (
         <div className="transfer-form left-aligned" style={{ marginTop: '20px' }}>
@@ -539,20 +544,45 @@ const AirportTransferPrivatePage = () => {
                   checked={checkboxAccepted}
                   onChange={(e) => setCheckboxAccepted(e.target.checked)}
                   id="consent"
+                  onClick={(e) => e.stopPropagation()} // не даёт всплытию перейти к label
                 />
-                <label htmlFor="consent" style={{ marginLeft: '8px' }}>
-                  {t('consent_text')}
+                <label
+                  htmlFor="consent"
+                  style={{ marginLeft: '8px', cursor: 'pointer' }}
+                  onClick={() => setShowPolicyModal(true)}
+                >
+                  {t('i_agree_with')}{' '}
+                  <span style={{ color: 'blue', textDecoration: 'underline' }}>
+                    {t('terms_and_privacy')}
+                  </span>
                 </label>
               </div>
+
+
+              <PrivacyPolicyModal
+                isOpen={showPolicyModal}
+                onClose={() => setShowPolicyModal(false)}
+              />
 
               <button
                 onClick={handleEmailSubmit}
                 className="transfer-button"
-                style={{ marginTop: '15px' }}
-                disabled={!checkboxAccepted || !email}
+                style={{
+                  marginTop: '15px',
+                  backgroundColor: (!checkboxAccepted || !isValidEmail(email)) ? '#ccc' : '#00aaff',
+                  color: 'white',
+                  border: 'none',
+                  padding: '10px 20px',
+                  borderRadius: '6px',
+                  fontSize: '16px',
+                  cursor: (!checkboxAccepted || !isValidEmail(email)) ? 'not-allowed' : 'pointer',
+                  transition: '0.3s ease',
+                }}
+                disabled={!checkboxAccepted || !isValidEmail(email)}
               >
                 {t('send_to_email')}
               </button>
+
 
               {emailSentMessage && (
                 <p style={{ marginTop: '10px', color: 'green' }}>{emailSentMessage}</p>

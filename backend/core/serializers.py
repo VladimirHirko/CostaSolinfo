@@ -1,7 +1,8 @@
 from core.models import (
     Homepage, Excursion, InfoMeeting, AirportTransfer, 
     Question, ContactInfo, AboutUs, TransferSchedule,
-    Hotel, PickupPoint, TransferNotification, TransferInquiry
+    Hotel, PickupPoint, TransferNotification, TransferInquiry,
+    PrivacyPolicy
     )
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -130,3 +131,8 @@ class AboutUsSerializer(BaseTranslationSerializer):
         model = AboutUs
         extra_fields = ['image']  # если есть
 
+# Политика конфиденциальности
+class PrivacyPolicySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PrivacyPolicy
+        fields = ['language_code', 'content']
