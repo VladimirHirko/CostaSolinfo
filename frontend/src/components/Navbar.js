@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import '../styles/navbar.css';
+import logo from '../assets/logo_CostaSolinfo.PNG';
 import { useTranslation } from 'react-i18next';
+import { NavLink, Link } from 'react-router-dom';
 
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,7 +15,9 @@ function Navbar() {
     <nav className={`navbar ${isOpen ? 'active' : ''}`}>
 
       <div className="navbar-brand">
-        <span className="brand-logo">CostaSolinfo</span>
+        <Link to="/" className="navbar-logo-link">
+          <img src="/logo_CostaSolinfo.PNG" alt="CostaSolinfo" className="navbar-logo" />
+        </Link>
 
         <div className="navbar-controls">
           <button className="burger" onClick={toggleMenu}>☰</button>
@@ -34,14 +37,63 @@ function Navbar() {
       </div>
 
       <div className={`navbar-links ${isOpen ? 'active' : ''}`}>
-        <Link to="/" onClick={() => setIsOpen(false)}>{t('home')}</Link>
-        <Link to="/excursions" onClick={() => setIsOpen(false)}>{t('excursions')}</Link>
-        <Link to="/info-meeting" onClick={() => setIsOpen(false)}>{t('info_meeting')}</Link>
-        <Link to="/airport-transfer" onClick={() => setIsOpen(false)}>{t('airport_transfer')}</Link>
-        <Link to="/ask" onClick={() => setIsOpen(false)}>{t('ask')}</Link>
-        <Link to="/contacts" onClick={() => setIsOpen(false)}>{t('contacts')}</Link>
-        <Link to="/about" onClick={() => setIsOpen(false)}>{t('about')}</Link>
+        <NavLink
+          to="/"
+          className={({ isActive }) => isActive ? 'active' : ''}
+          onClick={() => setIsOpen(false)}
+        >
+          {t('home')}
+        </NavLink>
+
+        <NavLink
+          to="/excursions"
+          className={({ isActive }) => isActive ? 'active' : ''}
+          onClick={() => setIsOpen(false)}
+        >
+          {t('excursions')}
+        </NavLink>
+
+        <NavLink
+          to="/info-meeting"
+          className={({ isActive }) => isActive ? 'active' : ''}
+          onClick={() => setIsOpen(false)}
+        >
+          {t('info_meeting')}
+        </NavLink>
+
+        <NavLink
+          to="/airport-transfer"
+          className={({ isActive }) => isActive ? 'active' : ''}
+          onClick={() => setIsOpen(false)}
+        >
+          {t('airport_transfer')}
+        </NavLink>
+
+        <NavLink
+          to="/ask"
+          className={({ isActive }) => isActive ? 'active' : ''}
+          onClick={() => setIsOpen(false)}
+        >
+          {t('ask')}
+        </NavLink>
+
+        <NavLink
+          to="/contacts"
+          className={({ isActive }) => isActive ? 'active' : ''}
+          onClick={() => setIsOpen(false)}
+        >
+          {t('contacts')}
+        </NavLink>
+
+        <NavLink
+          to="/about"
+          className={({ isActive }) => isActive ? 'active' : ''}
+          onClick={() => setIsOpen(false)}
+        >
+          {t('about')}
+        </NavLink>
       </div>
+
     </nav>
   );
 }

@@ -56,6 +56,14 @@
   "close": "Закрыть",
   "loading": "Загрузка",
   "policy_not_found": "Политика не найдена",
-  "error_loading_policy": "Ошибка при загрузке политики"
+  "error_loading_policy": "Ошибка при загрузке политики",
+  "info_meeting_title": "Инфо встреча",
+  "select_hotel": "Выберите ваш отель:",
+  "choose_hotel": "Выберите...",
+  "check_schedule": "Узнать расписание",
+  "date": "Дата",
+  "time_from": "С",
+  "time_to": "До",
+  "no_meetings_found": "На выбранную дату встреч не запланировано."
 }
 

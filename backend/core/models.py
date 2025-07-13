@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from ckeditor.fields import RichTextField
@@ -56,18 +57,36 @@ class Homepage(models.Model):
 # Инфо встреча
 class InfoMeeting(models.Model):
     title = models.CharField(max_length=255)
-    content = models.TextField()
-    location = models.CharField(max_length=255, blank=True)
+    content = RichTextField(blank=True, null=True)
 
-    date = models.DateField(blank=True, null=True)
-    time = models.TimeField(blank=True, null=True)
+    location = models.CharField(max_length=255, blank=True)
+    date = models.DateField(blank=True, null=True)  # Можно оставить для общей даты
+    time = models.TimeField(blank=True, null=True)  # и времени, если нужно
+    # Можно будет не использовать, если переходим на расписание
 
     def __str__(self):
-        return f"InfoMeeting on {self.date} at {self.time}"
+        return f"{self.title}"
 
     class Meta:
         verbose_name = "Инфо встреча"
         verbose_name_plural = "Инфо встречи"
+
+
+class InfoMeetingScheduleItem(models.Model):
+    #meeting = models.ForeignKey(InfoMeeting, on_delete=models.CASCADE, related_name='schedules')
+    hotel = models.ForeignKey('core.Hotel', on_delete=models.CASCADE)
+
+    date = models.DateField()
+    time_from = models.TimeField()
+    time_to = models.TimeField()
+
+    class Meta:
+        verbose_name = "Расписание инфо встречи"
+        verbose_name_plural = "Расписания инфо встреч"
+        ordering = ['date', 'time_from']
+
+    def __str__(self):
+        return f"{self.hotel.name} — {self.date} ({self.time_from}–{self.time_to})"
 
 
 # Трансфер в аэропорт 

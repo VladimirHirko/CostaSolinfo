@@ -14,7 +14,7 @@ from .models import (
     Region, PageBanner, GroupTransferPickupPoint, PrivateTransferPickupPoint,
     TransferSchedule, TransferScheduleGroup, TransferNotification,
     TransferInquiry, TransferInquiryLog, TransferScheduleItem,
-    TransferChangeLog, PrivacyPolicy, Homepage
+    TransferChangeLog, PrivacyPolicy, Homepage, InfoMeetingScheduleItem
 )
 from django import forms
 from ckeditor.widgets import CKEditorWidget
@@ -54,10 +54,25 @@ class HomepageAdmin(admin.ModelAdmin):
     form = HomepageAdminForm
     list_display = ('title',)
 
+
+
 # Инфо встреча
 @admin.register(InfoMeeting)
 class InfoMeetingAdmin(admin.ModelAdmin):
     list_display = ('title', 'location', 'date')
+
+class InfoMeetingScheduleItemInline(admin.TabularInline):
+    model = InfoMeetingScheduleItem
+    extra = 1  # количество пустых строк по умолчанию
+    fields = ('date', 'time_from', 'time_to')
+
+@admin.register(InfoMeetingScheduleItem)
+class InfoMeetingScheduleItemAdmin(admin.ModelAdmin):
+    list_display = ('hotel', 'date', 'time_from', 'time_to')
+    list_filter = ('hotel', 'date')
+
+
+
 
 # Трансфер в аэропорт
 @admin.register(AirportTransfer)

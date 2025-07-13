@@ -11,7 +11,7 @@ from core.models import (
     ContactInfo, AboutUs, Excursion, TransferSchedule, Hotel,
     PageBanner, Hotel, PickupPoint, TransferNotification,
     TransferInquiry, TransferScheduleItem, TransferScheduleGroup,
-    PrivacyPolicy
+    PrivacyPolicy, InfoMeetingScheduleItem
     )
 from core.utils import send_html_email
 from .serializers import (
@@ -19,7 +19,7 @@ from .serializers import (
     QuestionSerializer, ContactInfoSerializer, AboutUsSerializer, ExcursionSerializer,
     TransferScheduleRequestSerializer, TransferScheduleResponseSerializer,
     HotelSerializer, SimpleHotelSerializer, TransferNotificationCreateSerializer,
-    TransferInquirySerializer, PrivacyPolicySerializer
+    TransferInquirySerializer, PrivacyPolicySerializer, InfoMeetingScheduleItemSerializer
     )
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.contrib import admin
@@ -71,6 +71,28 @@ class InfoMeetingView(RetrieveAPIView):
 
     def get_object(self):
         return self.queryset.first()
+
+@api_view(['GET'])
+def info_meeting_schedule(request):
+    hotel_id = request.query_params.get('hotel_id')
+    if not hotel_id:
+        return Response({"error": "hotel_id is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        hotel = Hotel.objects.get(id=hotel_id)
+    except Hotel.DoesNotExist:
+        return Response({"error": "Hotel not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    schedule_items = InfoMeetingScheduleItem.objects.filter(hotel=hotel).order_by('date', 'time_from')
+    serializer = InfoMeetingScheduleItemSerializer(schedule_items, many=True)
+
+    return Response({
+        "hotel": hotel.name,
+        "schedule": serializer.data
+    })
+
+
+
 
 # Трансферы
 class AirportTransferView(RetrieveAPIView):

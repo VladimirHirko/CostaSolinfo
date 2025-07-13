@@ -6,6 +6,7 @@ import DatePicker from 'react-datepicker';
 import TransferMap from '../components/TransferMap';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import 'react-datepicker/dist/react-datepicker.css';
+import Button from '../components/Button';
 
 const AirportTransferGroupPage = () => {
   const { t, i18n } = useTranslation();
@@ -271,9 +272,10 @@ const AirportTransferGroupPage = () => {
         />
 
         {/* 🔹 Кнопка */}
-        <button type="submit" className="transfer-button">
+        <Button type="submit" className="transfer-button">
           {t('show_transfer_time')}
-        </button>
+        </Button>
+
       </form>
 
       {/* 🔹 Ошибка */}
@@ -361,9 +363,10 @@ const AirportTransferGroupPage = () => {
                 className="transfer-input"
               />
 
-              <button className="transfer-button" style={{ marginTop: '15px' }}>
+              <Button className="transfer-button" style={{ marginTop: '15px' }}>
                 {t('send_request')}
-              </button>
+              </Button>
+
             </form>
           )}
 
@@ -450,7 +453,7 @@ const AirportTransferGroupPage = () => {
               />
 
               {/* 📩 Кнопка */}
-              <button
+              <Button
                 onClick={handleEmailSubmit}
                 className="transfer-button"
                 style={{
@@ -467,7 +470,8 @@ const AirportTransferGroupPage = () => {
                 disabled={!checkboxAccepted || !isValidEmail(email) || !subscriberLastName}
               >
                 {t('send_to_email')}
-              </button>
+              </Button>
+
 
               {emailSentMessage && (
                 <p style={{ marginTop: '10px', color: 'green' }}>{emailSentMessage}</p>

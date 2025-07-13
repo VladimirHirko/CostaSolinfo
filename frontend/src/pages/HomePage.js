@@ -26,7 +26,12 @@ const HomePage = () => {
     <div className="home-page">
       {image && <img src={image} alt="Banner" className="homepage-banner" />}
       <h1 className="homepage-title">{title}</h1>
-      <p className="homepage-subtitle">{subtitle}</p>
+      
+      {/* Рендерим HTML из админки */}
+      <div
+        className="homepage-subtitle"
+        dangerouslySetInnerHTML={{ __html: subtitle }}
+      />
     </div>
   );
 };

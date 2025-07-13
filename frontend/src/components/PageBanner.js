@@ -1,6 +1,7 @@
+// PageBanner.js
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import './PageBanner.css'; // подключи если еще не подключал
+import './PageBanner.css';
 
 function PageBanner({ page }) {
   const [banner, setBanner] = useState(null);
@@ -22,28 +23,12 @@ function PageBanner({ page }) {
   if (!banner) return null;
 
   const backgroundImage = `url(http://localhost:8000${banner.image})`;
-  const title =
-    banner && banner.titles && (banner.titles[i18n.language] || banner.titles.ru || '');
+  const title = banner.titles[i18n.language] || banner.titles.ru || '';
 
   return (
-    <div className="page-container">
-      <div
-        className="page-banner"
-        style={{
-          backgroundImage,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          padding: '80px 20px',
-          color: '#fff',
-          textAlign: 'center',
-          borderRadius: '12px',
-          marginBottom: '30px',
-          fontWeight: 'bold',
-          fontSize: '32px',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-        }}
-      >
-        {title}
+    <div className="page-banner-wrapper">
+      <div className="page-banner" style={{ backgroundImage }}>
+        <div className="page-banner-content">{title}</div>
       </div>
     </div>
   );

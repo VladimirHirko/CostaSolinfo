@@ -2,7 +2,7 @@ from core.models import (
     Homepage, Excursion, InfoMeeting, AirportTransfer, 
     Question, ContactInfo, AboutUs, TransferSchedule,
     Hotel, PickupPoint, TransferNotification, TransferInquiry,
-    PrivacyPolicy
+    PrivacyPolicy, InfoMeetingScheduleItem
     )
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -25,12 +25,21 @@ class ExcursionSerializer(BaseTranslationSerializer):
         extra_fields = ['price', 'duration', 'image']  # добавь любые доп. поля
 
 
+
+
 class InfoMeetingSerializer(BaseTranslationSerializer):
     translatable_fields = ['title', 'content', 'location']
 
     class Meta:
         model = InfoMeeting
-        extra_fields = ['date', 'time']  # добавь реальные дополнительные поля, если есть
+        fields = '__all__'  # обязательно добавить!
+
+class InfoMeetingScheduleItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InfoMeetingScheduleItem
+        fields = ['date', 'time_from', 'time_to']
+
+
 
 
 

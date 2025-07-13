@@ -24,6 +24,19 @@
 .homepage-subtitle {
   font-size: 1.1em;
   line-height: 1.6;
-  white-space: pre-line;
   text-align: justify;
+  color: #333;
+  white-space: normal; /* было: pre-line */
+}
+
+.homepage-subtitle p {
+  margin-bottom: 0.8em; /* уменьшить расстояние между абзацами */
+}
+
+.homepage-subtitle strong {
+  font-weight: bold;
+}
+
+.homepage-subtitle em {
+  font-style: italic;
 }
