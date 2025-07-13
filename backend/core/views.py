@@ -478,7 +478,7 @@ class TransferInquiryViewSet(viewsets.ModelViewSet):
 
         # === Отправка письма ===
         email = EmailMultiAlternatives(
-            subject="Ваш запрос принят",
+            subject="Your request has been accepted",
             body=text_content,
             from_email="CostaSolinfo.Malaga@gmail.com",
             to=[inquiry.email],

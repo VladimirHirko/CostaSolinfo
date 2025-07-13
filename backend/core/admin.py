@@ -563,7 +563,7 @@ class TransferInquiryAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
     def _send_email(self, inquiry):
-        subject = "Ответ на ваш запрос по трансферу"
+        subject = "Your transfer request"
         from_email = "CostaSolinfo.Malaga@gmail.com"
         to_email = [inquiry.email]
 
