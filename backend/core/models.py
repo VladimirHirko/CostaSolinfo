@@ -83,7 +83,7 @@ class InfoMeetingScheduleItem(models.Model):
     class Meta:
         verbose_name = "Расписание инфо встречи"
         verbose_name_plural = "Расписания инфо встреч"
-        ordering = ['date', 'time_from']
+        ordering = ['date', 'time_from', 'time_to', 'hotel']
 
     def __str__(self):
         return f"{self.hotel.name} — {self.date} ({self.time_from}–{self.time_to})"

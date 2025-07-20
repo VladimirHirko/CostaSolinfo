@@ -1,4 +1,3 @@
-// InfoMeetingPage.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
@@ -8,14 +7,14 @@ import Button from '../components/Button';
 const InfoMeetingPage = () => {
   const { t, i18n } = useTranslation();
   const [welcomeText, setWelcomeText] = useState('');
-  const [hotels, setHotels] = useState([]);
+  const [hotelQuery, setHotelQuery] = useState('');
+  const [hotelOptions, setHotelOptions] = useState([]);
   const [selectedHotel, setSelectedHotel] = useState(null);
+  const [suggestionsVisible, setSuggestionsVisible] = useState(false);
   const [schedule, setSchedule] = useState([]);
   const [error, setError] = useState('');
-  const lang = i18n.language;
 
-
-  // Загрузка текста страницы (на нужном языке)
+  // 🔹 Загрузка текста страницы
   useEffect(() => {
     axios.get('/api/info-meeting/')
       .then(res => {
@@ -26,21 +25,52 @@ const InfoMeetingPage = () => {
       .catch(() => setWelcomeText(''));
   }, [i18n.language]);
 
-  // Загрузка списка отелей
+  // 🔹 Загрузка отелей по поиску
   useEffect(() => {
-    axios.get('/api/hotels/')
-      .then(res => setHotels(res.data))
-      .catch(() => setHotels([]));
-  }, []);
+    if (hotelQuery.length < 2) {
+      setHotelOptions([]);
+      setSuggestionsVisible(false);
+      return;
+    }
 
+    const timeout = setTimeout(() => {
+      axios.get(`/api/hotels/?search=${hotelQuery}`)
+        .then(res => {
+          setHotelOptions(res.data);
+          setSuggestionsVisible(true);
+        })
+        .catch(() => {
+          setHotelOptions([]);
+          setSuggestionsVisible(false);
+        });
+    }, 300);
+
+    return () => clearTimeout(timeout);
+  }, [hotelQuery]);
+
+  // 🔹 Отправка запроса на расписание
   const handleSubmit = () => {
     if (!selectedHotel) return;
-    axios.get(`/api/info_meetings/?hotel_id=${selectedHotel.id}`)
-      .then(res => setSchedule(res.data))
+
+    axios.get(`/api/info-meetings/?hotel_id=${selectedHotel.id}`)
+      .then(res => {
+        const scheduleList = res.data.schedule;
+        setSchedule(scheduleList);
+        setError(scheduleList.length === 0 ? t('no_meetings_found') : '');
+      })
       .catch(() => {
         setSchedule([]);
         setError(t('no_meetings_found'));
       });
+  };
+
+  // 🔹 Выбор отеля из подсказки
+  const handleSelectHotel = (hotel) => {
+    setSelectedHotel(hotel);
+    setHotelQuery(hotel.name);
+    setHotelOptions([]);
+    setSuggestionsVisible(false);
+    setTimeout(() => document.activeElement.blur(), 0); // снимаем фокус
   };
 
   return (
@@ -56,31 +86,40 @@ const InfoMeetingPage = () => {
         />
 
         <div className="info-meeting-form">
-          <label htmlFor="hotelSelect">{t('select_hotel')}</label>
-          <select
-            id="hotelSelect"
-            className="info-meeting-select"
-            onChange={e => {
-              const hotel = hotels.find(h => h.id === parseInt(e.target.value));
-              setSelectedHotel(hotel);
-            }}
-          >
-            <option value="">{t('choose_hotel')}</option>
-            {hotels.map(hotel => (
-              <option key={hotel.id} value={hotel.id}>
-                {hotel.name}
-              </option>
-            ))}
-          </select>
+          <label htmlFor="hotelInput">{t('select_hotel')}</label>
 
-          <Button onClick={handleSubmit}>
-            {t('check_schedule')}
-          </Button>
+          <div className="autocomplete-wrapper">
+            <input
+              id="hotelInput"
+              className="transfer-input"
+              type="text"
+              value={hotelQuery}
+              onChange={(e) => {
+                setHotelQuery(e.target.value);
+                setSelectedHotel(null);
+              }}
+              placeholder={t('choose_hotel')}
+            />
+            {suggestionsVisible && hotelOptions.length > 0 && !hotelOptions.some(h => h.name === hotelQuery) && (
+              <ul className="autocomplete-list">
+                {hotelOptions.map(hotel => (
+                  <li key={hotel.id} onMouseDown={() => handleSelectHotel(hotel)}>
+                    {hotel.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
 
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+            <Button onClick={handleSubmit} className="transfer-button">
+              {t('check_schedule')}
+            </Button>
+          </div>
         </div>
 
         {schedule.length > 0 ? (
-          <table className="table mt-4">
+          <table className="schedule-table">
             <thead>
               <tr>
                 <th>{t('date')}</th>
@@ -99,7 +138,9 @@ const InfoMeetingPage = () => {
             </tbody>
           </table>
         ) : error && (
-          <div className="error-message mt-4">{error}</div>
+          <div className="error-message mt-4" style={{ textAlign: 'center', color: 'red' }}>
+            {error}
+          </div>
         )}
       </div>
     </>

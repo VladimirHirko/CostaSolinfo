@@ -72,6 +72,8 @@ class InfoMeetingView(RetrieveAPIView):
     def get_object(self):
         return self.queryset.first()
 
+from django.utils.timezone import now
+
 @api_view(['GET'])
 def info_meeting_schedule(request):
     hotel_id = request.query_params.get('hotel_id')
@@ -83,14 +85,19 @@ def info_meeting_schedule(request):
     except Hotel.DoesNotExist:
         return Response({"error": "Hotel not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    schedule_items = InfoMeetingScheduleItem.objects.filter(hotel=hotel).order_by('date', 'time_from')
+    today = now().date()  # сегодняшняя дата
+
+    schedule_items = InfoMeetingScheduleItem.objects.filter(
+        hotel=hotel,
+        date__gte=today  # 🔹 только даты сегодня и позже
+    ).order_by('date', 'time_from')
+
     serializer = InfoMeetingScheduleItemSerializer(schedule_items, many=True)
 
     return Response({
         "hotel": hotel.name,
         "schedule": serializer.data
     })
-
 
 
 

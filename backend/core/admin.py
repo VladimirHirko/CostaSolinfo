@@ -61,10 +61,11 @@ class HomepageAdmin(admin.ModelAdmin):
 class InfoMeetingAdmin(admin.ModelAdmin):
     list_display = ('title', 'location', 'date')
 
-class InfoMeetingScheduleItemInline(admin.TabularInline):
+class InfoMeetingScheduleInline(admin.TabularInline):
     model = InfoMeetingScheduleItem
-    extra = 1  # количество пустых строк по умолчанию
-    fields = ('date', 'time_from', 'time_to')
+    extra = 1  # Кол-во пустых строк для добавления по умолчанию
+    fields = ['date', 'time_from', 'time_to']
+    ordering = ['date', 'time_from']
 
 @admin.register(InfoMeetingScheduleItem)
 class InfoMeetingScheduleItemAdmin(admin.ModelAdmin):
@@ -124,7 +125,7 @@ class PickupPointInline(admin.TabularInline):
 class HotelAdmin(admin.ModelAdmin):
     search_fields = ['name']
     fields = ('name', 'region', 'latitude', 'longitude')  # ❗ pickup_point убираем
-    inlines = [PickupPointInline]  # 🆕 добавлен Inline
+    inlines = [PickupPointInline, InfoMeetingScheduleInline]  # 🆕 добавлен Inline
     readonly_fields = ()
 
     class Media:

@@ -37,7 +37,7 @@ class InfoMeetingSerializer(BaseTranslationSerializer):
 class InfoMeetingScheduleItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = InfoMeetingScheduleItem
-        fields = ['date', 'time_from', 'time_to']
+        fields = ['id', 'date', 'time_from', 'time_to']
 
 
 
