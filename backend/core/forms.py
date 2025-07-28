@@ -1,5 +1,5 @@
 from django import forms
-from .models import Excursion, Hotel, TransferSchedule, PickupPoint
+from .models import Excursion, Hotel, TransferSchedule, PickupPoint, ExcursionPickupPoint
 from datetime import date
 
 # Форма для указания дней недели на экскурсии
@@ -49,3 +49,17 @@ class BulkTransferScheduleForm(forms.Form):
                 required=False,
                 widget=forms.TimeInput(attrs={'type': 'time'})
             )
+
+class ExcursionPickupPointForm(forms.ModelForm):
+    class Meta:
+        model = ExcursionPickupPoint
+        fields = '__all__'
+
+    class Media:
+        js = (
+            'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+            'admin/js/leaflet_admin_pickup.js',
+        )
+        css = {
+            'all': ('https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',)
+        }

@@ -14,8 +14,11 @@ from .models import (
     Region, PageBanner, GroupTransferPickupPoint, PrivateTransferPickupPoint,
     TransferSchedule, TransferScheduleGroup, TransferNotification,
     TransferInquiry, TransferInquiryLog, TransferScheduleItem,
-    TransferChangeLog, PrivacyPolicy, Homepage, InfoMeetingScheduleItem
+    TransferChangeLog, PrivacyPolicy, Homepage, InfoMeetingScheduleItem,
+    ExcursionPickupPoint, ExcursionRegionPrice
 )
+from leaflet.admin import LeafletGeoAdmin
+from leaflet.forms.widgets import LeafletWidget
 from django import forms
 from ckeditor.widgets import CKEditorWidget
 from django.urls import path
@@ -24,7 +27,7 @@ from django.utils.html import format_html
 from django.utils.timezone import now, localtime
 from django.utils.translation import activate, deactivate_all, gettext as _
 from core.utils import send_html_email
-from .forms import ExcursionAdminForm, BulkTransferScheduleForm
+from .forms import ExcursionAdminForm, BulkTransferScheduleForm, ExcursionPickupPointForm
 
 # Баннеры на старницах
 @admin.register(PageBanner)
@@ -176,14 +179,99 @@ class HotelAdmin(admin.ModelAdmin):
 @admin.register(Region)
 class RegionAdmin(admin.ModelAdmin):
     list_display = ['name']
+    search_fields = ['name']  # 👈 добавляем
 
-# Админка экскурсии
+
+class ExcursionPickupInline(admin.TabularInline):
+    model = ExcursionPickupPoint
+    extra = 1
+    autocomplete_fields = ['hotel']
+    fields = (
+        'hotel', 'pickup_point_name', 'pickup_time',
+        'latitude', 'longitude', 'get_direction', 'get_price_adult', 'get_price_child'
+    )
+    readonly_fields = ('get_direction', 'get_price_adult', 'get_price_child')
+
+    def get_direction(self, obj):
+        return obj.direction
+    get_direction.short_description = "Направление"
+
+    def get_price_adult(self, obj):
+        return obj.price_adult
+    get_price_adult.short_description = "Цена взрослый"
+
+    def get_price_child(self, obj):
+        return obj.price_child
+    get_price_child.short_description = "Цена ребёнок"
+
+
+
+class ExcursionPickupPointForm(forms.ModelForm):
+    class Meta:
+        model = ExcursionPickupPoint
+        fields = '__all__'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        excursion = cleaned_data.get("excursion")
+        hotel = cleaned_data.get("hotel")
+
+        if excursion and hotel and hotel.region:
+            try:
+                region_price = ExcursionRegionPrice.objects.get(excursion=excursion, region=hotel.region)
+                cleaned_data["price_adult"] = region_price.price_adult
+                cleaned_data["price_child"] = region_price.price_child
+            except ExcursionRegionPrice.DoesNotExist:
+                self.add_error("hotel", f"Для региона {hotel.region} не установлены цены")
+        return cleaned_data
+
+
+@admin.register(ExcursionPickupPoint)
+class ExcursionPickupPointAdmin(admin.ModelAdmin):
+    form = ExcursionPickupPointForm
+    list_display = ('id', 'get_hotel', 'get_excursion', 'pickup_time', 'get_region')
+
+    def get_hotel(self, obj):
+        return obj.hotel.name
+    get_hotel.short_description = "Отель"
+
+    def get_excursion(self, obj):
+        return obj.excursion.title
+    get_excursion.short_description = "Экскурсия"
+
+    def get_region(self, obj):
+        return obj.hotel.region.name if obj.hotel.region else "—"
+    get_region.short_description = "Регион"
+
+    class Media:
+        css = {
+            "all": [
+                "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+            ]
+        }
+        js = [
+            "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
+            "/static/admin/js/leaflet_admin_pickup.js"
+        ]
+
+class ExcursionRegionPriceInline(admin.TabularInline):
+    model = ExcursionRegionPrice
+    extra = 1
+    autocomplete_fields = ['region']
+    fields = ('region', 'price_adult', 'price_child')
+    ordering = ['region']
+    verbose_name = "Цена по региону"
+    verbose_name_plural = "Цены по регионам"
+
+
 @admin.register(Excursion)
 class ExcursionAdmin(admin.ModelAdmin):
-    form = ExcursionAdminForm  # ✅ это ОБЯЗАТЕЛЬНО
+    form = ExcursionAdminForm
     list_display = ('title', 'direction', 'duration')
     list_filter = ('direction',)
     search_fields = ('title', 'description')
+    inlines = [ExcursionRegionPriceInline, ExcursionPickupInline]  # 👈 Добавили регионы
+
     fieldsets = (
         (None, {
             'fields': ('title', 'description', 'duration', 'direction', 'days')

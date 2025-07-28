@@ -4,6 +4,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
 from ckeditor.fields import RichTextField
+from django.contrib.gis.db import models as geomodels
 
 TRANSFER_TYPE_CHOICES = [
         ('group', 'Групповой'),
@@ -405,6 +406,64 @@ class Excursion(models.Model):
     class Meta:
         verbose_name = "Экскурсия"
         verbose_name_plural = "Экскурсии"
+
+class ExcursionRegionPrice(models.Model):
+    excursion = models.ForeignKey(
+        Excursion,
+        on_delete=models.CASCADE,
+        related_name="region_prices",
+        verbose_name="Экскурсия"
+    )
+    region = models.ForeignKey(
+        Region,
+        on_delete=models.CASCADE,
+        verbose_name="Регион"
+    )
+    price_adult = models.DecimalField(max_digits=8, decimal_places=2, verbose_name="Цена взрослый")
+    price_child = models.DecimalField(max_digits=8, decimal_places=2, verbose_name="Цена ребёнок")
+
+    class Meta:
+        unique_together = ('excursion', 'region')
+        verbose_name = "Цена экскурсии по региону"
+        verbose_name_plural = "Цены экскурсий по регионам"
+
+    def __str__(self):
+        return f"{self.excursion.title} - {self.region.name}"
+
+
+class ExcursionPickupPoint(models.Model):
+    excursion = models.ForeignKey('Excursion', on_delete=models.CASCADE)
+    hotel = models.ForeignKey('Hotel', on_delete=models.CASCADE)
+    pickup_point_name = models.CharField(max_length=200, verbose_name="Название точки сбора")
+    pickup_time = models.TimeField(verbose_name="Время отправления")
+    
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, verbose_name="Широта")
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, verbose_name="Долгота")
+
+    @property
+    def direction(self):
+        return self.excursion.direction
+
+    @property
+    def price_adult(self):
+        region = self.hotel.region
+        if not region:
+            return None
+        price = self.excursion.region_prices.filter(region=region).first()
+        return price.price_adult if price else None
+
+    @property
+    def price_child(self):
+        region = self.hotel.region
+        if not region:
+            return None
+        price = self.excursion.region_prices.filter(region=region).first()
+        return price.price_child if price else None
+
+    class Meta:
+        unique_together = ('excursion', 'hotel')
+        verbose_name = "Точка сбора экскурсии"
+        verbose_name_plural = "Точки сбора экскурсий"
 
 
 

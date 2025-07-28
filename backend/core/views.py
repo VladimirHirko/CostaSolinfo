@@ -11,7 +11,7 @@ from core.models import (
     ContactInfo, AboutUs, Excursion, TransferSchedule, Hotel,
     PageBanner, Hotel, PickupPoint, TransferNotification,
     TransferInquiry, TransferScheduleItem, TransferScheduleGroup,
-    PrivacyPolicy, InfoMeetingScheduleItem
+    PrivacyPolicy, InfoMeetingScheduleItem, ExcursionRegionPrice
     )
 from core.utils import send_html_email
 from .serializers import (
@@ -544,6 +544,21 @@ class ExcursionView(RetrieveAPIView):
 
     def get_object(self):
         return self.queryset.first()  # если только одна экскурсия, иначе делаем ListAPIView
+
+def get_excursion_price(request):
+    excursion_id = request.GET.get("excursion")
+    hotel_id = request.GET.get("hotel")
+
+    try:
+        hotel = Hotel.objects.get(id=hotel_id)
+        region = hotel.region
+        price = ExcursionRegionPrice.objects.get(excursion_id=excursion_id, region=region)
+        return JsonResponse({
+            "price_adult": str(price.price_adult),
+            "price_child": str(price.price_child),
+        })
+    except (Hotel.DoesNotExist, ExcursionRegionPrice.DoesNotExist):
+        return JsonResponse({"error": "Цена не найдена"}, status=404)
 
 # Поисковая система по отелям
 @api_view(['GET'])
