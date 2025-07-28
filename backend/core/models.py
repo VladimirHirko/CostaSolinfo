@@ -394,7 +394,6 @@ class Excursion(models.Model):
     )
 
     title = models.CharField(max_length=200, verbose_name="Название")
-    description = models.TextField(verbose_name="Описание")
     duration = models.PositiveIntegerField(verbose_name="Продолжительность (часы)")
     image = models.ImageField(upload_to='excursions/', blank=True, null=True, verbose_name="Главное изображение")
     days = models.JSONField(verbose_name="Дни недели", help_text="Список дней: mon, tue и т.д.")
@@ -464,6 +463,36 @@ class ExcursionPickupPoint(models.Model):
         unique_together = ('excursion', 'hotel')
         verbose_name = "Точка сбора экскурсии"
         verbose_name_plural = "Точки сбора экскурсий"
+
+class ExcursionContentBlock(models.Model):
+    BLOCK_TYPES = [
+        ('description', 'Описание'),
+        ('rules', 'Правила проведения'),
+        ('what_to_bring', 'Что иметь при себе'),
+        ('custom', 'Дополнительно'),
+    ]
+
+    excursion = models.ForeignKey(
+        'Excursion',
+        on_delete=models.CASCADE,
+        related_name='content_blocks',
+        verbose_name="Экскурсия"
+    )
+    block_type = models.CharField(max_length=50, choices=BLOCK_TYPES, default='custom', verbose_name="Тип блока")
+    order = models.PositiveIntegerField(default=0, verbose_name="Порядок отображения")
+
+    title = models.CharField(max_length=200, blank=True, null=True, verbose_name="Заголовок")
+    content = RichTextField(blank=True, null=True, verbose_name="Содержание")
+
+
+    def __str__(self):
+        return f"{self.excursion.title} — {self.get_block_type_display()}"
+
+    class Meta:
+        verbose_name = "Блок контента экскурсии"
+        verbose_name_plural = "Блоки контента экскурсий"
+        ordering = ['order']
+
 
 
 

@@ -2,7 +2,7 @@ from core.models import (
     Homepage, Excursion, InfoMeeting, AirportTransfer, 
     Question, ContactInfo, AboutUs, TransferSchedule,
     Hotel, PickupPoint, TransferNotification, TransferInquiry,
-    PrivacyPolicy, InfoMeetingScheduleItem
+    PrivacyPolicy, InfoMeetingScheduleItem, ExcursionContentBlock
     )
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -14,15 +14,26 @@ class HomepageSerializer(BaseTranslationSerializer):
 
     class Meta:
         model = Homepage
-        extra_fields = ['banner_image']
+        fields = ['title', 'subtitle', 'banner_image']
 
 
-class ExcursionSerializer(BaseTranslationSerializer):
-    translatable_fields = ['title', 'description']
+class ExcursionContentBlockSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExcursionContentBlock
+        fields = [
+            'order',
+            'title_ru', 'title_en', 'title_es', 'title_lt', 'title_lv', 'title_et', 'title_uk',
+            'content_ru', 'content_en', 'content_es', 'content_lt', 'content_lv', 'content_et', 'content_uk',
+        ]
+
+
+class ExcursionSerializer(serializers.ModelSerializer):
+    content_blocks = ExcursionContentBlockSerializer(many=True, read_only=True)
 
     class Meta:
         model = Excursion
-        extra_fields = ['price', 'duration', 'image']  # добавь любые доп. поля
+        fields = ['id', 'title', 'duration', 'direction', 'days', 'image', 'content_blocks']
+
 
 
 
@@ -108,7 +119,8 @@ class TransferInquirySerializer(serializers.ModelSerializer):
 class HotelSerializer(serializers.ModelSerializer):
     class Meta:
         model = Hotel
-        fields = ['id', 'name', 'latitude', 'longitude']
+        fields = ['id', 'name', 'latitude', 'longitude', 'region']
+
 
 class SimpleHotelSerializer(serializers.ModelSerializer):
     class Meta:
@@ -117,12 +129,11 @@ class SimpleHotelSerializer(serializers.ModelSerializer):
 
 
 
-class QuestionSerializer(BaseTranslationSerializer):
-    translatable_fields = ['message']
-
+class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
-        extra_fields = ['email', 'created_at']  # если есть
+        fields = ['name', 'email', 'message', 'created_at']
+
 
 
 class ContactInfoSerializer(BaseTranslationSerializer):

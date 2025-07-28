@@ -1,6 +1,6 @@
 import Levenshtein
 from datetime import datetime
-from rest_framework.generics import RetrieveAPIView
+from rest_framework.generics import RetrieveAPIView, ListAPIView
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view  # 🔧 Добавь это
 from rest_framework.response import Response
@@ -559,6 +559,10 @@ def get_excursion_price(request):
         })
     except (Hotel.DoesNotExist, ExcursionRegionPrice.DoesNotExist):
         return JsonResponse({"error": "Цена не найдена"}, status=404)
+
+class ExcursionListView(ListAPIView):
+    queryset = Excursion.objects.all()
+    serializer_class = ExcursionSerializer
 
 # Поисковая система по отелям
 @api_view(['GET'])

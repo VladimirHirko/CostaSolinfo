@@ -1,5 +1,6 @@
 import pandas as pd
 import datetime
+from django.db import models
 from django.contrib import admin, messages
 from django.core.mail import EmailMultiAlternatives, send_mail
 from django.shortcuts import render, redirect
@@ -15,7 +16,7 @@ from .models import (
     TransferSchedule, TransferScheduleGroup, TransferNotification,
     TransferInquiry, TransferInquiryLog, TransferScheduleItem,
     TransferChangeLog, PrivacyPolicy, Homepage, InfoMeetingScheduleItem,
-    ExcursionPickupPoint, ExcursionRegionPrice
+    ExcursionPickupPoint, ExcursionRegionPrice, ExcursionContentBlock
 )
 from leaflet.admin import LeafletGeoAdmin
 from leaflet.forms.widgets import LeafletWidget
@@ -264,22 +265,55 @@ class ExcursionRegionPriceInline(admin.TabularInline):
     verbose_name_plural = "Цены по регионам"
 
 
+class ExcursionContentBlockForm(forms.ModelForm):
+    class Meta:
+        model = ExcursionContentBlock
+        fields = '__all__'
+        widgets = {
+            'content_ru': CKEditorWidget(),
+            'content_en': CKEditorWidget(),
+            'content_es': CKEditorWidget(),
+            'content_lt': CKEditorWidget(),
+            'content_lv': CKEditorWidget(),
+            'content_et': CKEditorWidget(),
+            'content_uk': CKEditorWidget(),
+        }
+
+
+# class ExcursionContentBlockInline(admin.TabularInline):
+#     model = ExcursionContentBlock
+#     form = ExcursionContentBlockForm
+#     extra = 1  # одно пустое поле для добавления
+#     ordering = ['order']
+
+@admin.register(ExcursionContentBlock)
+class ExcursionContentBlockAdmin(admin.ModelAdmin):
+    list_display = ('excursion', 'block_type', 'order', 'title_ru')
+    list_filter = ('excursion', 'block_type')
+    search_fields = ('title_ru', 'title_en', 'title_es')
+    ordering = ['excursion', 'order']
+    form = ExcursionContentBlockForm
+
+
 @admin.register(Excursion)
 class ExcursionAdmin(admin.ModelAdmin):
     form = ExcursionAdminForm
-    list_display = ('title', 'direction', 'duration')
+    list_display = ('title', 'direction', 'duration', 'is_active')
     list_filter = ('direction',)
-    search_fields = ('title', 'description')
+    search_fields = ('title',)
     inlines = [ExcursionRegionPriceInline, ExcursionPickupInline]  # 👈 Добавили регионы
 
     fieldsets = (
         (None, {
-            'fields': ('title', 'description', 'duration', 'direction', 'days')
+            'fields': ('title', 'duration', 'direction', 'days', 'is_active')
         }),
         ('Фото и медиа', {
             'fields': ('image',)
         }),
     )
+
+
+
 
 # Админка выставления времени и даты на трансферы
 class CustomAdminSite(admin.AdminSite):

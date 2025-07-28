@@ -1,0 +1,21 @@
+.excursion-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.excursion-image {
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.excursion-block {
+  margin-bottom: 30px;
+  padding: 15px;
+  border-left: 4px solid #0077cc;
+  background: #f9f9f9;
+  border-radius: 8px;
+}

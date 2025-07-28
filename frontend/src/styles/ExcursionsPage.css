@@ -1,0 +1,59 @@
+/* src/styles/ExcursionsPage.css */
+
+.excursions-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  padding: 20px;
+}
+
+.excursion-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.excursion-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.excursion-card h2 {
+  font-size: 1.2rem;
+  margin: 15px 10px 10px;
+  color: #333;
+}
+
+.excursion-thumb {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-bottom: 1px solid #eee;
+}
+
+.excursion-card p {
+  font-size: 0.95rem;
+  color: #666;
+  margin: 10px 0;
+}
+
+.excursion-card a {
+  display: inline-block;
+  margin: 10px 0 15px;
+  padding: 8px 16px;
+  background: #0077cc;
+  color: #fff;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background 0.3s ease;
+}
+
+.excursion-card a:hover {
+  background: #005fa3;
+}

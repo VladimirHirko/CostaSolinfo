@@ -1,5 +1,9 @@
-from modeltranslation.translator import register, TranslationOptions
-from .models import Homepage, InfoMeeting, AirportTransfer, Question, ContactInfo, AboutUs, Excursion
+from modeltranslation.translator import register, TranslationOptions, translator
+from .models import (
+    Homepage, InfoMeeting, AirportTransfer, 
+    Question, ContactInfo, AboutUs, Excursion, 
+    ExcursionContentBlock
+)
 
 # Главная
 @register(Homepage)
@@ -34,4 +38,10 @@ class AboutUsTranslationOptions(TranslationOptions):
 # Экскурсии
 @register(Excursion)
 class ExcursionTranslationOptions(TranslationOptions):
-    fields = ('title', 'description')
+    fields = ('title',)
+
+# Блоки контента экскурсии
+class ExcursionContentBlockTranslationOptions(TranslationOptions):
+    fields = ('title', 'content')
+
+translator.register(ExcursionContentBlock, ExcursionContentBlockTranslationOptions)
