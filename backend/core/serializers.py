@@ -2,19 +2,41 @@ from core.models import (
     Homepage, Excursion, InfoMeeting, AirportTransfer, 
     Question, ContactInfo, AboutUs, TransferSchedule,
     Hotel, PickupPoint, TransferNotification, TransferInquiry,
-    PrivacyPolicy, InfoMeetingScheduleItem, ExcursionContentBlock
+    PrivacyPolicy, InfoMeetingScheduleItem, ExcursionContentBlock,
+    PageBanner
     )
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 from rest_framework import serializers
 from .utils import BaseTranslationSerializer  # путь зависит от твоей структуры проекта
 
+class PageBannerSerializer(serializers.ModelSerializer):
+    titles = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PageBanner
+        fields = ["image", "titles"]
+
+    def get_titles(self, obj):
+        return {
+            "ru": obj.title_ru,
+            "en": obj.title_en,
+            "es": obj.title_es,
+            "uk": obj.title_uk,
+            "et": obj.title_et,
+            "lv": obj.title_lv,
+            "lt": obj.title_lt,
+        }
+
 class HomepageSerializer(BaseTranslationSerializer):
     translatable_fields = ['title', 'subtitle']
+    banner_image = serializers.ImageField(use_url=True)
 
     class Meta:
         model = Homepage
         fields = ['title', 'subtitle', 'banner_image']
+        extra_fields = ['banner_image']
+
 
 
 class ExcursionContentBlockSerializer(serializers.ModelSerializer):
@@ -28,18 +50,47 @@ class ExcursionContentBlockSerializer(serializers.ModelSerializer):
 
 
 class ExcursionSerializer(serializers.ModelSerializer):
-    content_blocks = ExcursionContentBlockSerializer(many=True, read_only=True)
+    localized_title = serializers.SerializerMethodField()
+    localized_description = serializers.SerializerMethodField()
 
     class Meta:
         model = Excursion
-        fields = ['id', 'title', 'duration', 'direction', 'days', 'image', 'content_blocks']
+        fields = [
+            'id',
+            'duration',
+            'direction',
+            'days',
+            'image',
+            'localized_title',
+            'localized_description',
+        ]
+
+    def get_localized_title(self, obj):
+        request = self.context.get('request')
+        lang = getattr(request, 'LANGUAGE_CODE', 'ru')
+        block = obj.content_blocks.filter(block_type='description').first()
+        if block:
+            return getattr(block, f"title_{lang}", None) or obj.title
+        return obj.title
+
+    def get_localized_description(self, obj):
+        request = self.context.get('request')
+        lang = getattr(request, 'LANGUAGE_CODE', 'ru')
+        block = obj.content_blocks.filter(block_type='description').first()
+        if block:
+            return getattr(block, f"content_{lang}", None) or block.content or ""
+        return ""
+
+
+
+
 
 
 
 
 
 class InfoMeetingSerializer(BaseTranslationSerializer):
-    translatable_fields = ['title', 'content', 'location']
+    translatable_fields = ['title', 'content']
 
     class Meta:
         model = InfoMeeting

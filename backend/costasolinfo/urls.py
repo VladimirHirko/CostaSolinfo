@@ -11,7 +11,7 @@ from core.views import (
     page_banner_api, BulkTransferScheduleForm, transfer_info, transfer_schedule_view,
     available_hotels_for_transfer, TransferNotificationViewSet, TransferInquiryViewSet,
     confirm_transfer_notification, PrivacyPolicyView, info_meeting_schedule,
-    ExcursionListView
+    ExcursionListView, PageBannerView
 )
 
 transfer_notification_view = TransferNotificationViewSet.as_view({'post': 'create'})
@@ -29,6 +29,7 @@ urlpatterns = [
 
     # 🔹 API endpoints
     path('api/banner/<str:page>/', page_banner_api, name='page_banner_api'),
+    path("api/banner/<str:page>/", PageBannerView.as_view(), name="page-banner"),
     path('api/homepage/', HomepageView.as_view(), name='homepage'),
     path('api/info-meeting/', InfoMeetingView.as_view(), name='info-meeting'),
     path('api/info-meetings/', info_meeting_schedule, name='info-meeting-schedule'),

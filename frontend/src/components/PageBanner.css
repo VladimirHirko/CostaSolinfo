@@ -24,3 +24,39 @@
   margin: 0 auto;
   padding: 0 20px;
 }
+
+/* Контейнер главной страницы */
+.home-page {
+  padding: 20px;
+  text-align: center;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Заголовок */
+.homepage-title {
+  font-size: 2em;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+/* Подзаголовок */
+.homepage-subtitle {
+  font-size: 1.1em;
+  line-height: 1.6;
+  text-align: justify;
+  color: #333;
+  white-space: normal;
+}
+
+.homepage-subtitle p {
+  margin-bottom: 0.8em;
+}
+
+.homepage-subtitle strong {
+  font-weight: bold;
+}
+
+.homepage-subtitle em {
+  font-style: italic;
+}

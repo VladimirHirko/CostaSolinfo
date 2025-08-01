@@ -394,6 +394,7 @@ class Excursion(models.Model):
     )
 
     title = models.CharField(max_length=200, verbose_name="Название")
+    
     duration = models.PositiveIntegerField(verbose_name="Продолжительность (часы)")
     image = models.ImageField(upload_to='excursions/', blank=True, null=True, verbose_name="Главное изображение")
     days = models.JSONField(verbose_name="Дни недели", help_text="Список дней: mon, tue и т.д.")

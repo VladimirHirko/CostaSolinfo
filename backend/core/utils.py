@@ -14,27 +14,38 @@ from django.utils.translation import gettext as _
 
 class BaseTranslationSerializer(serializers.ModelSerializer):
     """
-    Универсальный сериализатор, который автоматически добавляет переводы для указанных полей.
-    Пример использования:
-        class HomepageSerializer(BaseTranslationSerializer):
-            translatable_fields = ['title', 'subtitle']
+    Универсальный сериализатор, автоматически добавляющий переводы.
+    Убираем мусорные поля вроде '_', 'a', 'l'.
     """
     translatable_fields = []
+    extra_fields = []
 
     class Meta:
         model = None
-        fields = []  # будет переопределено в __new__
+        fields = []
 
     def __new__(cls, *args, **kwargs):
-        cls.Meta.fields = []
+        # Все реальные поля модели
+        valid_fields = {f.name for f in cls.Meta.model._meta.get_fields()} if cls.Meta.model else set()
+
+        translated_fields = []
         if cls.Meta.model and hasattr(cls, 'translatable_fields'):
-            # Добавляем переводы всех указанных полей
-            translated_fields = []
             for field in cls.translatable_fields:
-                translated_fields += get_translation_fields(field)
-            # Добавляем остальные обычные поля вручную (например, изображения)
-            cls.Meta.fields = translated_fields + getattr(cls.Meta, 'extra_fields', [])
+                candidates = get_translation_fields(field)
+                filtered = [f for f in candidates if f in valid_fields]
+                translated_fields.extend(filtered)
+
+        meta_extra = getattr(cls.Meta, 'extra_fields', [])
+        extra_fields_clean = [f for f in meta_extra if f in valid_fields]
+
+        # Итог: только валидные поля
+        cls.Meta.fields = list(set(translated_fields + extra_fields_clean))
+
+        print(f"[DEBUG CLEAN] Итоговые поля сериализатора: {cls.Meta.fields}")
+
         return super().__new__(cls)
+
+
 
 
 # 🔹 Темы писем по шаблону и языку

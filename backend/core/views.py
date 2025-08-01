@@ -11,7 +11,8 @@ from core.models import (
     ContactInfo, AboutUs, Excursion, TransferSchedule, Hotel,
     PageBanner, Hotel, PickupPoint, TransferNotification,
     TransferInquiry, TransferScheduleItem, TransferScheduleGroup,
-    PrivacyPolicy, InfoMeetingScheduleItem, ExcursionRegionPrice
+    PrivacyPolicy, InfoMeetingScheduleItem, ExcursionRegionPrice,
+    PageBanner
     )
 from core.utils import send_html_email
 from .serializers import (
@@ -19,7 +20,8 @@ from .serializers import (
     QuestionSerializer, ContactInfoSerializer, AboutUsSerializer, ExcursionSerializer,
     TransferScheduleRequestSerializer, TransferScheduleResponseSerializer,
     HotelSerializer, SimpleHotelSerializer, TransferNotificationCreateSerializer,
-    TransferInquirySerializer, PrivacyPolicySerializer, InfoMeetingScheduleItemSerializer
+    TransferInquirySerializer, PrivacyPolicySerializer, InfoMeetingScheduleItemSerializer,
+    PageBannerSerializer
     )
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.contrib import admin
@@ -57,6 +59,14 @@ def page_banner_api(request, page):
         return JsonResponse(data)
     except PageBanner.DoesNotExist:
         return JsonResponse({"error": "Banner not found"}, status=404)
+
+class PageBannerView(RetrieveAPIView):
+    serializer_class = PageBannerSerializer
+    lookup_field = "page"
+
+    def get_object(self):
+        page = self.kwargs.get("page")
+        return PageBanner.objects.filter(page=page).first()
 
 class HomepageView(RetrieveAPIView):
     queryset = Homepage.objects.all()
@@ -561,8 +571,14 @@ def get_excursion_price(request):
         return JsonResponse({"error": "Цена не найдена"}, status=404)
 
 class ExcursionListView(ListAPIView):
-    queryset = Excursion.objects.all()
+    queryset = Excursion.objects.filter(is_active=True)
     serializer_class = ExcursionSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
 
 # Поисковая система по отелям
 @api_view(['GET'])
