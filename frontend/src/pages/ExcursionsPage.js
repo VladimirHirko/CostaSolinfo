@@ -15,7 +15,7 @@ const ExcursionsPage = () => {
   useEffect(() => {
     axios
       .get("/api/excursions/", {
-        headers: { "Accept-Language": i18n.language } // ✅ отправляем язык
+        headers: { "Accept-Language": i18n.language }
       })
       .then((response) => {
         setExcursions(response.data || []);
@@ -30,10 +30,6 @@ const ExcursionsPage = () => {
   if (loading) return <p>{t("loading")}</p>;
   if (!excursions || excursions.length === 0)
     return <p>{t("no_excursions_found")}</p>;
-
-  const translateDays = (days) => {
-    return days.map((day) => t(day));
-  };
 
   return (
     <>
@@ -57,6 +53,13 @@ const ExcursionsPage = () => {
                 : `http://127.0.0.1:8000${excursion.image}`;
             }
 
+            // 🔹 Вступительный текст (обрезаем до 120 символов без HTML тегов)
+            const introText = excursion.localized_description
+              ? excursion.localized_description
+                  .replace(/<\/?[^>]+(>|$)/g, "")
+                  .slice(0, 120) + "..."
+              : "";
+
             return (
               <div key={excursion.id} className="excursion-card">
                 <img
@@ -68,31 +71,12 @@ const ExcursionsPage = () => {
 
                 <h2>{excursion.localized_title || t("excursion")}</h2>
 
-                <p>
-                  {t("duration")}: {excursion.duration || "?"} {t("hours")}
-                </p>
-
-                {excursion.localized_description && (
-                  <p
-                    className="excursion-description"
-                    dangerouslySetInnerHTML={{
-                      __html: excursion.localized_description
-                    }}
-                  />
+                {introText && (
+                  <p className="excursion-intro">{introText}</p>
                 )}
 
-                {excursion.days && Array.isArray(excursion.days) ? (
-                  <p>
-                    {t("excursion_days")}:{" "}
-                    {translateDays(excursion.days).join(", ")}
-                  </p>
-                ) : (
-                  <p>{t("excursion_days_not_specified")}</p>
-                )}
+                <Link to={`/excursion/${excursion.id}`}>{t("read_more")}</Link>
 
-                <Link to={`/excursions/${excursion.id}`}>
-                  {t("read_more")}
-                </Link>
               </div>
             );
           })}

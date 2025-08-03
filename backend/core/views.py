@@ -21,7 +21,7 @@ from .serializers import (
     TransferScheduleRequestSerializer, TransferScheduleResponseSerializer,
     HotelSerializer, SimpleHotelSerializer, TransferNotificationCreateSerializer,
     TransferInquirySerializer, PrivacyPolicySerializer, InfoMeetingScheduleItemSerializer,
-    PageBannerSerializer
+    PageBannerSerializer, ExcursionDetailSerializer
     )
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.contrib import admin
@@ -578,6 +578,13 @@ class ExcursionListView(ListAPIView):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
+
+
+class ExcursionDetailView(RetrieveAPIView):
+    queryset = Excursion.objects.all()
+    serializer_class = ExcursionDetailSerializer
+
+
 
 
 # Поисковая система по отелям

@@ -82,6 +82,55 @@ class ExcursionSerializer(serializers.ModelSerializer):
         return ""
 
 
+class ExcursionDetailSerializer(serializers.ModelSerializer):
+    localized_title = serializers.SerializerMethodField()
+    localized_description = serializers.SerializerMethodField()
+    images = serializers.SerializerMethodField()
+    content_blocks = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Excursion
+        fields = [
+            "id", "localized_title", "localized_description",
+            "duration", "days", "direction", "is_active",
+            "images", "content_blocks"
+        ]
+
+    def get_language(self):
+        request = self.context.get("request")
+        if request:
+            return getattr(request, "LANGUAGE_CODE", "ru")
+        return "ru"
+
+    def get_localized_title(self, obj):
+        lang = self.get_language()
+        block = obj.content_blocks.filter(block_type="description").first()
+        if block:
+            return getattr(block, f"title_{lang}", None) or obj.title
+        return obj.title
+
+    def get_localized_description(self, obj):
+        lang = self.get_language()
+        block = obj.content_blocks.filter(block_type="description").first()
+        if block:
+            return getattr(block, f"content_{lang}", None) or block.content or ""
+        return ""
+
+    def get_images(self, obj):
+        return [img.image.url for img in getattr(obj, "images", [])]
+
+    def get_content_blocks(self, obj):
+        lang = self.get_language()
+        return [
+            {
+                "type": block.block_type,
+                "localized_title": getattr(block, f"title_{lang}", block.title),
+                "localized_content": getattr(block, f"content_{lang}", block.content or "")
+            }
+            for block in obj.content_blocks.all()
+        ]
+
+
 
 
 

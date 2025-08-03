@@ -3,7 +3,7 @@ import './styles/main.css';
 import './styles/navbar.css';
 import 'leaflet/dist/leaflet.css';
 import ExcursionsPage from "./pages/ExcursionsPage";
-import ExcursionPage from "./pages/ExcursionPage";
+import ExcursionDetailPage from "./pages/ExcursionDetailPage"; // ✅ правильный импорт
 
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
@@ -27,7 +27,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/excursions" element={<ExcursionsPage />} />
-          <Route path="/excursion/:id" element={<ExcursionPage />} />
+          <Route path="/excursion/:id" element={<ExcursionDetailPage />} />
           <Route path="/info-meeting" element={<InfoMeetingPage />} />
           <Route path="/airport-transfer" element={<AirportTransferChoicePage />} />
           <Route path="/airport-transfer/group" element={<AirportTransferGroupPage />} />

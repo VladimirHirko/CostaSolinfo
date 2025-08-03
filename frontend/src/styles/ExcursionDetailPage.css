@@ -1,0 +1,86 @@
+.excursion-detail-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  text-align: left; /* ✅ текст привязан к левому краю контейнера */
+}
+
+.excursion-description {
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 20px 0;
+}
+
+.excursion-block {
+  margin-bottom: 20px;
+}
+
+.excursion-gallery {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.excursion-gallery img {
+  width: 200px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.hotel-select {
+  margin: 20px 0;
+}
+
+.book-button {
+  background-color: #0077cc;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  border: none;
+}
+
+.book-button:hover {
+  background-color: #005fa3;
+}
+
+.hotel-select {
+  margin: 20px 0;
+  position: relative;
+  max-width: 400px;
+}
+
+.hotel-select input {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+.hotel-select ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  position: absolute;
+  width: 100%;
+  background: white;
+  z-index: 10;
+}
+
+.hotel-select li {
+  padding: 10px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+.hotel-select li:hover {
+  background: #f0f8ff;
+}
