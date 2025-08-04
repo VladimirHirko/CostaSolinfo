@@ -16,7 +16,8 @@ from .models import (
     TransferSchedule, TransferScheduleGroup, TransferNotification,
     TransferInquiry, TransferInquiryLog, TransferScheduleItem,
     TransferChangeLog, PrivacyPolicy, Homepage, InfoMeetingScheduleItem,
-    ExcursionPickupPoint, ExcursionRegionPrice, ExcursionContentBlock
+    ExcursionPickupPoint, ExcursionRegionPrice, ExcursionContentBlock, 
+    ExcursionPickupReference, ExcursionImage
 )
 from leaflet.admin import LeafletGeoAdmin
 from leaflet.forms.widgets import LeafletWidget
@@ -186,12 +187,15 @@ class RegionAdmin(admin.ModelAdmin):
 class ExcursionPickupInline(admin.TabularInline):
     model = ExcursionPickupPoint
     extra = 1
-    autocomplete_fields = ['hotel']
+    autocomplete_fields = ['hotel', 'copy_from']
     fields = (
-        'hotel', 'pickup_point_name', 'pickup_time',
+        'hotel', 'copy_from', 'pickup_point_name', 'pickup_time',
         'latitude', 'longitude', 'get_direction', 'get_price_adult', 'get_price_child'
     )
-    readonly_fields = ('get_direction', 'get_price_adult', 'get_price_child')
+    readonly_fields = (
+        'pickup_point_name', 'latitude', 'longitude',
+        'get_direction', 'get_price_adult', 'get_price_child'
+    )
 
     def get_direction(self, obj):
         return obj.direction
@@ -205,6 +209,10 @@ class ExcursionPickupInline(admin.TabularInline):
         return obj.price_child
     get_price_child.short_description = "Цена ребёнок"
 
+@admin.register(ExcursionPickupReference)
+class ExcursionPickupReferenceAdmin(admin.ModelAdmin):
+    search_fields = ['name']
+    list_display = ['name', 'latitude', 'longitude', 'default_time']
 
 
 class ExcursionPickupPointForm(forms.ModelForm):
@@ -216,44 +224,93 @@ class ExcursionPickupPointForm(forms.ModelForm):
         cleaned_data = super().clean()
         excursion = cleaned_data.get("excursion")
         hotel = cleaned_data.get("hotel")
+        pickup_point = cleaned_data.get("pickup_point")
 
+        # === Автозаполнение по выбранной точке сбора ===
+        if pickup_point:
+            cleaned_data["pickup_point_name"] = pickup_point.name
+            cleaned_data["latitude"] = pickup_point.latitude
+            cleaned_data["longitude"] = pickup_point.longitude
+            if not cleaned_data.get("pickup_time"):
+                cleaned_data["pickup_time"] = getattr(pickup_point, "default_time", None)
+
+        # === Цены по региону ===
         if excursion and hotel and hotel.region:
             try:
-                region_price = ExcursionRegionPrice.objects.get(excursion=excursion, region=hotel.region)
+                region_price = ExcursionRegionPrice.objects.get(
+                    excursion=excursion,
+                    region=hotel.region
+                )
                 cleaned_data["price_adult"] = region_price.price_adult
                 cleaned_data["price_child"] = region_price.price_child
             except ExcursionRegionPrice.DoesNotExist:
                 self.add_error("hotel", f"Для региона {hotel.region} не установлены цены")
+
         return cleaned_data
 
 
 @admin.register(ExcursionPickupPoint)
 class ExcursionPickupPointAdmin(admin.ModelAdmin):
     form = ExcursionPickupPointForm
+    search_fields = ['pickup_point_name']
     list_display = ('id', 'get_hotel', 'get_excursion', 'pickup_time', 'get_region')
+    fields = ('excursion', 'hotel', 'pickup_point_name', 'pickup_time', 'latitude', 'longitude', 'map_block')
+    readonly_fields = ('map_block',)
 
     def get_hotel(self, obj):
-        return obj.hotel.name
+        return obj.hotel.name if obj.hotel else "—"
     get_hotel.short_description = "Отель"
 
     def get_excursion(self, obj):
-        return obj.excursion.title
+        return obj.excursion.title if obj.excursion else "—"
     get_excursion.short_description = "Экскурсия"
 
     def get_region(self, obj):
-        return obj.hotel.region.name if obj.hotel.region else "—"
+        return obj.hotel.region.name if obj.hotel and obj.hotel.region else "—"
     get_region.short_description = "Регион"
+
+    def map_block(self, obj=None):
+        return mark_safe(f"""
+            <div style="margin-top:20px; width:100%;">
+                <h3 style="margin-bottom: 5px;">Выбор координат на карте</h3>
+                <div id="map" style="height: 400px; width: 425%; border: 1px solid #ccc;"></div>
+                <script>
+                    document.addEventListener("DOMContentLoaded", function() {{
+                        var latInput = document.getElementById('id_latitude');
+                        var lngInput = document.getElementById('id_longitude');
+                        var lat = parseFloat(latInput.value) || 36.595;
+                        var lng = parseFloat(lngInput.value) || -4.537;
+
+                        var map = L.map('map').setView([lat, lng], 12);
+                        L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+                            attribution: 'Map data © OpenStreetMap contributors'
+                        }}).addTo(map);
+
+                        var marker = L.marker([lat, lng], {{draggable: true}}).addTo(map);
+
+                        marker.on('dragend', function(e) {{
+                            var coords = e.target.getLatLng();
+                            latInput.value = coords.lat.toFixed(6);
+                            lngInput.value = coords.lng.toFixed(6);
+                        }});
+
+                        map.on('click', function(e) {{
+                            marker.setLatLng(e.latlng);
+                            latInput.value = e.latlng.lat.toFixed(6);
+                            lngInput.value = e.latlng.lng.toFixed(6);
+                        }});
+                    }});
+                </script>
+            </div>
+        """)
+    map_block.short_description = "Карта выбора точки"
 
     class Media:
         css = {
-            "all": [
-                "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-            ]
+            "all": ["https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"]
         }
-        js = [
-            "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js",
-            "/static/admin/js/leaflet_admin_pickup.js"
-        ]
+        js = ["https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"]
+
 
 class ExcursionRegionPriceInline(admin.TabularInline):
     model = ExcursionRegionPrice
@@ -295,13 +352,18 @@ class ExcursionContentBlockAdmin(admin.ModelAdmin):
     form = ExcursionContentBlockForm
 
 
+class ExcursionImageInline(admin.TabularInline):
+    model = ExcursionImage
+    extra = 1  # сколько пустых полей показывать по умолчанию
+    fields = ('image', 'alt_text')
+
 @admin.register(Excursion)
 class ExcursionAdmin(admin.ModelAdmin):
     form = ExcursionAdminForm
     list_display = ('title', 'direction', 'duration', 'is_active')
     list_filter = ('direction',)
     search_fields = ('title',)
-    inlines = [ExcursionRegionPriceInline, ExcursionPickupInline]  # 👈 Добавили регионы
+    inlines = [ExcursionRegionPriceInline, ExcursionPickupInline, ExcursionImageInline]  # 👈 Добавили регионы
 
     fieldsets = (
         (None, {
@@ -312,6 +374,8 @@ class ExcursionAdmin(admin.ModelAdmin):
         }),
     )
 
+    class Media:
+        js = ("admin/js/excursion_pickup_autofill.js",)
 
 
 
@@ -770,4 +834,3 @@ class TransferInquiryAdmin(admin.ModelAdmin):
             email=inquiry.email,
             reply_content=inquiry.reply
         )
-

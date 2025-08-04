@@ -11,7 +11,8 @@ from core.views import (
     page_banner_api, BulkTransferScheduleForm, transfer_info, transfer_schedule_view,
     available_hotels_for_transfer, TransferNotificationViewSet, TransferInquiryViewSet,
     confirm_transfer_notification, PrivacyPolicyView, info_meeting_schedule,
-    ExcursionListView, PageBannerView, ExcursionDetailView
+    ExcursionListView, PageBannerView, ExcursionDetailView, pickup_point_detail,
+    excursion_pickup_view
 )
 
 transfer_notification_view = TransferNotificationViewSet.as_view({'post': 'create'})
@@ -45,9 +46,14 @@ urlpatterns = [
     path('api/excursion/', ExcursionView.as_view(), name='excursion'),
     path('api/excursions/', ExcursionListView.as_view(), name='excursion-list'),
     path("api/excursions/<int:pk>/", ExcursionDetailView.as_view(), name="excursion-detail"),
+    path("api/excursions/<int:excursion_id>/pickup/", excursion_pickup_view, name="excursion_pickup"),
+    path("api/pickup-point/<int:pk>/", pickup_point_detail, name="pickup_point_detail"),
     #path('api/transfer-schedule/', TransferScheduleLookupView.as_view(), name='transfer-schedule'),
     path('api/', include(router.urls)),
     path('api/hotels/', views.hotel_search, name='hotel_search'),
     path('api/privacy-policy/', PrivacyPolicyView.as_view(), name='privacy-policy'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

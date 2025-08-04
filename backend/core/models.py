@@ -407,6 +407,18 @@ class Excursion(models.Model):
         verbose_name = "Экскурсия"
         verbose_name_plural = "Экскурсии"
 
+class ExcursionImage(models.Model):
+    excursion = models.ForeignKey(
+        "Excursion",
+        related_name="images",
+        on_delete=models.CASCADE
+    )
+    image = models.ImageField(upload_to="excursions/gallery/")
+    alt_text = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return self.alt_text or f"Фото {self.id}"
+
 class ExcursionRegionPrice(models.Model):
     excursion = models.ForeignKey(
         Excursion,
@@ -434,11 +446,38 @@ class ExcursionRegionPrice(models.Model):
 class ExcursionPickupPoint(models.Model):
     excursion = models.ForeignKey('Excursion', on_delete=models.CASCADE)
     hotel = models.ForeignKey('Hotel', on_delete=models.CASCADE)
-    pickup_point_name = models.CharField(max_length=200, verbose_name="Название точки сбора")
-    pickup_time = models.TimeField(verbose_name="Время отправления")
+    copy_from = models.ForeignKey(  # 👈 новое поле
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='clones',
+        verbose_name="Использовать готовую точку"
+    )
+    pickup_reference = models.ForeignKey(  # 👈 новое поле
+        'ExcursionPickupReference',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='excursion_pickups',
+        verbose_name="Ссылка на готовую точку"
+    )
+    pickup_point = models.ForeignKey('PickupPoint', on_delete=models.SET_NULL, null=True, blank=True, related_name="excursion_pickups", verbose_name="Точка сбора")
+
+    pickup_point_name = models.CharField(max_length=200, verbose_name="Название точки сбора", blank=True)
+    pickup_time = models.TimeField(verbose_name="Время отправления", null=True, blank=True)
     
-    latitude = models.DecimalField(max_digits=9, decimal_places=6, verbose_name="Широта")
-    longitude = models.DecimalField(max_digits=9, decimal_places=6, verbose_name="Долгота")
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Широта")
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Долгота")
+
+    def save(self, *args, **kwargs):
+        if self.pickup_reference:
+            self.pickup_point_name = self.pickup_reference.name
+            self.latitude = self.pickup_reference.latitude
+            self.longitude = self.pickup_reference.longitude
+            if not self.pickup_time:
+                self.pickup_time = self.pickup_reference.default_time
+        super().save(*args, **kwargs)
 
     @property
     def direction(self):
@@ -464,6 +503,25 @@ class ExcursionPickupPoint(models.Model):
         unique_together = ('excursion', 'hotel')
         verbose_name = "Точка сбора экскурсии"
         verbose_name_plural = "Точки сбора экскурсий"
+
+    def __str__(self):
+        return f"{self.pickup_point_name} ({self.hotel.name if self.hotel else 'Без отеля'})"
+
+# core/models.py
+class ExcursionPickupReference(models.Model):
+    name = models.CharField(max_length=200, verbose_name="Название точки сбора")
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    default_time = models.TimeField(null=True, blank=True, verbose_name="Время по умолчанию")
+
+    class Meta:
+        verbose_name = "Справочник точек сбора"
+        verbose_name_plural = "Справочник точек сбора"
+
+    def __str__(self):
+        return self.name
+
+
 
 class ExcursionContentBlock(models.Model):
     BLOCK_TYPES = [
@@ -519,4 +577,3 @@ class PrivacyPolicy(models.Model):
 
     def __str__(self):
         return f"Политика конфиденциальности ({self.get_language_code_display()})"
-

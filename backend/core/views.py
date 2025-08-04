@@ -12,7 +12,7 @@ from core.models import (
     PageBanner, Hotel, PickupPoint, TransferNotification,
     TransferInquiry, TransferScheduleItem, TransferScheduleGroup,
     PrivacyPolicy, InfoMeetingScheduleItem, ExcursionRegionPrice,
-    PageBanner
+    PageBanner, ExcursionPickupPoint
     )
 from core.utils import send_html_email
 from .serializers import (
@@ -584,8 +584,36 @@ class ExcursionDetailView(RetrieveAPIView):
     queryset = Excursion.objects.all()
     serializer_class = ExcursionDetailSerializer
 
+def pickup_point_detail(request, pk):
+    pickup = get_object_or_404(ExcursionPickupPoint, pk=pk)
+    return JsonResponse({
+        "id": pickup.id,
+        "pickup_point_name": pickup.pickup_point_name,
+        "latitude": str(pickup.latitude) if pickup.latitude else None,
+        "longitude": str(pickup.longitude) if pickup.longitude else None,
+        "pickup_time": pickup.pickup_time.strftime("%H:%M") if pickup.pickup_time else None,
+    })
 
+@api_view(['GET'])
+def excursion_pickup_view(request, excursion_id):
+    hotel_id = request.GET.get("hotel_id")
+    if not hotel_id:
+        return Response({"error": "hotel_id is required"}, status=status.HTTP_400_BAD_REQUEST)
 
+    try:
+        pickup = ExcursionPickupPoint.objects.get(excursion_id=excursion_id, hotel_id=hotel_id)
+    except ExcursionPickupPoint.DoesNotExist:
+        return Response({"error": "Pickup point not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    return Response({
+        "id": pickup.id,
+        "name": pickup.pickup_point_name,
+        "lat": float(pickup.latitude) if pickup.latitude else None,
+        "lng": float(pickup.longitude) if pickup.longitude else None,
+        "time": pickup.pickup_time.strftime("%H:%M") if pickup.pickup_time else None,
+        "price_adult": pickup.price_adult,
+        "price_child": pickup.price_child,
+    })
 
 # Поисковая система по отелям
 @api_view(['GET'])
@@ -604,6 +632,5 @@ class PrivacyPolicyView(APIView):
             return Response({'content': policy.content})
         except PrivacyPolicy.DoesNotExist:
             return Response({'content': ''})
-
 
 

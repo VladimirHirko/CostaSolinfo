@@ -3,7 +3,7 @@ from core.models import (
     Question, ContactInfo, AboutUs, TransferSchedule,
     Hotel, PickupPoint, TransferNotification, TransferInquiry,
     PrivacyPolicy, InfoMeetingScheduleItem, ExcursionContentBlock,
-    PageBanner
+    PageBanner, ExcursionImage
     )
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -82,7 +82,13 @@ class ExcursionSerializer(serializers.ModelSerializer):
         return ""
 
 
+class ExcursionImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExcursionImage
+        fields = ['id', 'image', 'alt_text']
+
 class ExcursionDetailSerializer(serializers.ModelSerializer):
+    images = ExcursionImageSerializer(many=True, read_only=True)
     localized_title = serializers.SerializerMethodField()
     localized_description = serializers.SerializerMethodField()
     images = serializers.SerializerMethodField()
@@ -90,11 +96,7 @@ class ExcursionDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Excursion
-        fields = [
-            "id", "localized_title", "localized_description",
-            "duration", "days", "direction", "is_active",
-            "images", "content_blocks"
-        ]
+        fields = '__all__'
 
     def get_language(self):
         request = self.context.get("request")
@@ -117,7 +119,11 @@ class ExcursionDetailSerializer(serializers.ModelSerializer):
         return ""
 
     def get_images(self, obj):
-        return [img.image.url for img in getattr(obj, "images", [])]
+        request = self.context.get("request")
+        return [
+            request.build_absolute_uri(img.image.url) 
+            for img in obj.images.all()
+        ]
 
     def get_content_blocks(self, obj):
         lang = self.get_language()

@@ -71,13 +71,21 @@
   "hours": "ч.",
   "excursion_days": "Дни проведения",
   "excursion_days_not_specified": "Дни проведения: не указаны",
+  "excursion_pickup_time": "Время сбора на экскурсию",
+  "show_info": "Показать информацию",
+  "open_in_google_maps": "Открыть в Google Maps",
+  "adult_price": "Цена для взрослых",
+  "child_price": "Цена для детей",
   "read_more": "Подробнее",
+  "choose_your_hotel": "Выберите ваш отель проживания",
+  "choose_hotel": "Начните вводить название отеля",
   "mon": "пн",
   "tue": "вт",
   "wed": "ср",
   "thu": "чт",
   "fri": "пт",
   "sat": "сб",
-  "sun": "вс"
+  "sun": "вс",
+  "no_excursion_for_hotel": "Для этого отеля нет подходящих экскурсий. Свяжитесь с вашим представителем."
 }
 
