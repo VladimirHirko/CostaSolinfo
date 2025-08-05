@@ -2,6 +2,7 @@ import React from 'react';
 import './styles/main.css';
 import './styles/navbar.css';
 import 'leaflet/dist/leaflet.css';
+
 import ExcursionsPage from "./pages/ExcursionsPage";
 import ExcursionDetailPage from "./pages/ExcursionDetailPage"; // ✅ правильный импорт
 
@@ -17,11 +18,13 @@ import ContactsPage from './pages/ContactsPage';
 import AboutUsPage from './pages/AboutUsPage';
 
 import Navbar from './components/Navbar'; // ✅ навигация вынесена сюда
+import Footer from './components/Footer'; // ✅ футер подключен
+import ScrollToTopButton from './components/ScrollToTopButton';
 
 function App() {
   return (
     <Router>
-      <Navbar /> {/* 👈 Только навигация */}
+      <Navbar /> {/* 👈 Навигация */}
       
       <div className="main-container" style={{ padding: '20px' }}>
         <Routes>
@@ -37,6 +40,9 @@ function App() {
           <Route path="/about" element={<AboutUsPage />} />
         </Routes>
       </div>
+
+      <Footer /> {/* 👈 Футер теперь на всех страницах */}
+      <ScrollToTopButton /> {/* 👈 кнопка наверх */}
     </Router>
   );
 }

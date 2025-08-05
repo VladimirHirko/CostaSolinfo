@@ -197,40 +197,45 @@ const ExcursionDetailPage = () => {
 
         
 
-        {/* Выбор отеля */}
-        <div className="hotel-select">
-          <label htmlFor="hotel-input" className="hotel-label">
-            {t("choose_your_hotel")}
-          </label>
-          <input
-            id="hotel-input"
-            type="text"
-            value={hotelQuery}
-            autoComplete="off"   
-            onChange={(e) => {
-              setHotelQuery(e.target.value);
-              setSelectedHotel(null);
-            }}
-            placeholder={t("choose_hotel")}
-          />
-          {hotelOptions.length > 0 && (
-            <ul>
-              {hotelOptions.map((hotel) => (
-                <li
-                  key={hotel.id}
-                  onClick={() => {
-                    handleSelectHotel(hotel);
-                    setHotelOptions([]); // очистить список
-                    document.getElementById("hotel-input").blur(); // убрать фокус
-                  }}
-                >
-                  {hotel.name}
-                </li>
-              ))}
-            </ul>
-          )}
+        {/* Блок выбора отеля */}
+        <div className="hotel-select-block">
+          <h3 className="hotel-title">🚍 {t("excursion.select_hotel_title")}</h3>
+          {/*<p className="hotel-instruction">{t("excursion.select_hotel_instruction")}</p>*/}
 
+          <div className="hotel-select">
+            <label htmlFor="hotel-input" className="hotel-label">
+              {t("choose_your_hotel")}
+            </label>
+            <input
+              id="hotel-input"
+              type="text"
+              value={hotelQuery}
+              autoComplete="off"
+              onChange={(e) => {
+                setHotelQuery(e.target.value);
+                setSelectedHotel(null);
+              }}
+              placeholder={t("excursion.select_hotel_placeholder")}
+            />
+            {hotelOptions.length > 0 && (
+              <ul>
+                {hotelOptions.map((hotel) => (
+                  <li
+                    key={hotel.id}
+                    onClick={() => {
+                      handleSelectHotel(hotel);
+                      setHotelOptions([]); // очистить список
+                      document.getElementById("hotel-input").blur(); // убрать фокус
+                    }}
+                  >
+                    {hotel.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
+
 
 
         {/* Карта с точкой сбора */}
@@ -250,9 +255,14 @@ const ExcursionDetailPage = () => {
                     </p>
                   )}
                   {pickupInfo.child_price && (
-                    <p className="price-child">
-                      👧 {t("child_price")}: {pickupInfo.child_price} €
-                    </p>
+                    <>
+                      <p className="price-child">
+                        👧 {t("child_price")}: {pickupInfo.child_price} €
+                      </p>
+                      <p className="child-note">
+                        {t("excursion.child_free_note")}
+                      </p>
+                    </>
                   )}
                 </div>
               )}

@@ -245,10 +245,55 @@
   margin: 5px 0;
 }
 
+.child-note {
+  font-size: 14px;
+  color: #666;
+  margin-top: 5px;
+  font-style: italic;
+}
+
 .pickup-title {
   text-align: center;
   font-size: 22px;
   font-weight: bold;
   margin: 15px 0;
+}
+
+.hotel-select-block {
+  background: #f0f8ff;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  margin: 40px auto;
+  max-width: 650px;
+  text-align: center;
+}
+
+.hotel-title {
+  font-size: 22px;
+  font-weight: bold;
+  color: #0056b3;
+  margin-bottom: 10px;
+}
+
+.hotel-instruction {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 15px;
+}
+
+#hotel-input {
+  width: 100%;
+  padding: 12px;
+  font-size: 16px;
+  border: 2px solid #007bff;
+  border-radius: 8px;
+  transition: box-shadow 0.3s, border-color 0.3s;
+}
+
+#hotel-input:focus {
+  border-color: #28a745;
+  box-shadow: 0 0 10px rgba(40,167,69,0.3);
+  outline: none;
 }
 
