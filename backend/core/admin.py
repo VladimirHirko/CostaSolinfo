@@ -17,7 +17,7 @@ from .models import (
     TransferInquiry, TransferInquiryLog, TransferScheduleItem,
     TransferChangeLog, PrivacyPolicy, Homepage, InfoMeetingScheduleItem,
     ExcursionPickupPoint, ExcursionRegionPrice, ExcursionContentBlock, 
-    ExcursionPickupReference, ExcursionImage
+    ExcursionPickupReference, ExcursionImage, Question
 )
 from leaflet.admin import LeafletGeoAdmin
 from leaflet.forms.widgets import LeafletWidget
@@ -88,8 +88,18 @@ class AirportTransferAdmin(admin.ModelAdmin):
 # Задать вопрос
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ('name', 'email', 'created_at')
-    readonly_fields = ('created_at',)
+    list_display = ("name", "email", "category", "created_at")
+    list_filter = ("category", "created_at")
+    search_fields = ("name", "email", "question")
+    readonly_fields = ("created_at",)
+
+    def language_with_flag(self, obj):
+        flags = {
+            'ru': '🇷🇺', 'en': '🇬🇧', 'es': '🇪🇸', 'lt': '🇱🇹',
+            'lv': '🇱🇻', 'et': '🇪🇪', 'uk': '🇺🇦'
+        }
+        return format_html('{}&nbsp;{}', flags.get(obj.language, ''), obj.get_language_display())
+    language_with_flag.short_description = 'Язык'
 
 # Контакты
 @admin.register(ContactInfo)
@@ -834,3 +844,8 @@ class TransferInquiryAdmin(admin.ModelAdmin):
             email=inquiry.email,
             reply_content=inquiry.reply
         )
+
+
+
+
+

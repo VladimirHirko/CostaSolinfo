@@ -34,15 +34,8 @@ const HomePage = () => {
 
   return (
     <>
-      {/* 🔹 Баннер как на других страницах */}
-      <div className="page-banner-wrapper">
-        <div
-          className="page-banner"
-          style={{ backgroundImage: `url(${bannerImage})` }}
-        >
-          <div className="page-banner-content">{title}</div>
-        </div>
-      </div>
+      {/* ✅ Баннер как на других страницах */}
+      <PageBanner page="home" />
 
       {/* 🔹 Контент */}
       <div className="page-container">
@@ -53,6 +46,7 @@ const HomePage = () => {
       </div>
     </>
   );
+
 };
 
 export default HomePage;

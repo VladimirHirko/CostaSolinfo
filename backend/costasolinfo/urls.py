@@ -6,13 +6,13 @@ from rest_framework.routers import DefaultRouter
 from core import views
 # Импорт всех нужных View
 from core.views import (
-    HomepageView, InfoMeetingView, AirportTransferView, QuestionView,
+    HomepageView, InfoMeetingView, AirportTransferView,
     ContactInfoView, AboutUsView, ExcursionView, TransferScheduleLookupView,
     page_banner_api, BulkTransferScheduleForm, transfer_info, transfer_schedule_view,
     available_hotels_for_transfer, TransferNotificationViewSet, TransferInquiryViewSet,
     confirm_transfer_notification, PrivacyPolicyView, info_meeting_schedule,
     ExcursionListView, PageBannerView, ExcursionDetailView, pickup_point_detail,
-    excursion_pickup_view
+    excursion_pickup_view, QuestionCreateAPIView
 )
 
 transfer_notification_view = TransferNotificationViewSet.as_view({'post': 'create'})
@@ -40,7 +40,7 @@ urlpatterns = [
     path('api/transfer-notifications/', transfer_notification_view, name='transfer-notification'),
     path('api/transfer-confirm/<uuid:token>/', confirm_transfer_notification, name='transfer_confirm'),
     path('api/available-hotels/', available_hotels_for_transfer, name='available_hotels_for_transfer'),
-    path('api/question/', QuestionView.as_view(), name='question'),
+    #path('api/question/', QuestionView.as_view(), name='question'),
     path('api/contact-info/', ContactInfoView.as_view(), name='contact-info'),
     path('api/about-us/', AboutUsView.as_view(), name='about-us'),
     path('api/excursion/', ExcursionView.as_view(), name='excursion'),
@@ -52,6 +52,9 @@ urlpatterns = [
     path('api/', include(router.urls)),
     path('api/hotels/', views.hotel_search, name='hotel_search'),
     path('api/privacy-policy/', PrivacyPolicyView.as_view(), name='privacy-policy'),
+    path("api/questions/", QuestionCreateAPIView.as_view(), name="create-question"),
+    path('api/contact-questions/', QuestionCreateAPIView.as_view(), name='contact-questions'),
+
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

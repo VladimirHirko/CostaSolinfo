@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from modeltranslation.utils import get_translation_fields
-from django.core.mail import EmailMultiAlternatives
+from django.core.mail import EmailMultiAlternatives, send_mail
 from django.template.loader import render_to_string
 
 from django.conf import settings
@@ -102,3 +102,33 @@ def send_transfer_update_email(notification: TransferNotification):
         context=context,
         to=[notification.email]
     )
+
+
+def send_question_notification(question, lang_code=None):
+    subject = f"Новый вопрос от {question.name}"
+    recipient = getattr(settings, "QUESTION_NOTIFICATION_EMAIL", "costasolinfo.malaga@gmail.com")
+
+    # если язык не передали — берём из модели
+    if not lang_code:
+        lang_code = getattr(question, "language", "ru")
+
+    # вытаскиваем текст именно из нужного переводного поля
+    question_text = getattr(question, f"question_{lang_code}", None) or question.question
+
+    # Подготовим текст и HTML версии
+    context = {"question": question, "lang_code": lang_code, "question_text": question_text}
+    message_text = (
+        f"Имя: {question.name}\n"
+        f"Email: {question.email}\n"
+        f"Отель: {question.hotel or '-'}\n"
+        f"Категория: {question.get_category_display()}\n"
+        f"Язык обращения: {lang_code}\n\n"
+        f"Вопрос:\n{question_text}"
+    )
+    message_html = render_to_string("emails/question_notification.html", context)
+
+    msg = EmailMultiAlternatives(subject, message_text, settings.DEFAULT_FROM_EMAIL, [recipient])
+    msg.attach_alternative(message_html, "text/html")
+    msg.send()
+
+

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h2>Новый вопрос от {{ question.name }}</h2>
+    <p><strong>Email:</strong> {{ question.email }}</p>
+    <p><strong>Отель:</strong> {{ question.hotel|default:"-" }}</p>
+    <p><strong>Категория:</strong> {{ question.get_category_display }}</p>
+    <p><strong>Язык обращения:</strong> {{ question.get_language_display }} ({{ question.language }})</p>
+    <hr>
+    <p><strong>Вопрос:</strong></p>
+    <p>{{ question.question }}</p>
+</body>
+</html>

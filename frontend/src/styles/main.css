@@ -19,24 +19,7 @@ body {
   padding: 10px 0;
 }
 
-/* Стили кнопок */
-.btn-style {
-  padding: 14px 28px;
-  font-size: 16px;
-  border: none;
-  border-radius: 10px;
-  background-color: #00AEEF; /* основной сине-голубой */
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.3s ease, transform 0.2s ease;
-}
 
-.btn-style:hover {
-  background-color: #0054A6; /* тёмно-синий при наведении */
-  transform: scale(1.03);
-}
 
 /* Стили кнопок трансферов */
 .transfer-buttons {
@@ -48,7 +31,7 @@ body {
 }
 
 .transfer-button {
-  background-color: #00aaff;
+  background-color: #0071c2 !important;
   color: white;
   font-weight: bold;
   padding: 12px 24px;
@@ -62,7 +45,7 @@ body {
 }
 
 .transfer-button:hover {
-  background-color: #0077aa;
+  background-color: #005b9a !important;
 }
 
 /* Форма группового трансфера */

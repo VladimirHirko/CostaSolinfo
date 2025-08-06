@@ -387,7 +387,11 @@ const AirportTransferPrivatePage = () => {
           dateFormat="yyyy-MM-dd"
         />
 
-        <button type="submit" className="transfer-button">
+        <button
+          type="submit"
+          className="transfer-button"
+          style={{ alignSelf: "flex-start" }}
+        >
           {t('show_transfer_time')}
         </button>
       </form>

@@ -272,9 +272,13 @@ const AirportTransferGroupPage = () => {
         />
 
         {/* 🔹 Кнопка */}
-        <Button type="submit" className="transfer-button">
+        <button
+          type="submit"
+          className="transfer-button"
+          style={{ alignSelf: "flex-start" }}
+        >
           {t('show_transfer_time')}
-        </Button>
+        </button>
 
       </form>
 

@@ -16,7 +16,7 @@ function Navbar() {
 
       <div className="navbar-brand">
         <Link to="/" className="navbar-logo-link">
-          <img src="/logo_CostaSolinfo.PNG" alt="CostaSolinfo" className="navbar-logo" />
+          <img src={logo} alt="CostaSolinfo" className="navbar-logo" />
         </Link>
 
         <div className="navbar-controls">

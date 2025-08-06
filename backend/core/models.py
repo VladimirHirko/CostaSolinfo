@@ -203,17 +203,39 @@ class TransferChangeLog(models.Model):
 
 # Задать вопрос
 class Question(models.Model):
-    name = models.CharField(max_length=100)
-    email = models.EmailField()
-    message = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
+    CATEGORY_CHOICES = [
+        ('transfer', 'Вопрос по трансферу'),
+        ('excursion', 'Вопрос по экскурсии'),
+        ('organization', 'Организационный вопрос'),
+        ('other', 'Другое'),
+    ]
+
+    LANG_CHOICES = [
+        ('ru', 'Русский'),
+        ('en', 'English'),
+        ('es', 'Español'),
+        ('lt', 'Lietuvių'),
+        ('lv', 'Latviešu'),
+        ('et', 'Eesti'),
+        ('uk', 'Українська'),
+    ]
+
+    name = models.CharField(max_length=100, verbose_name="Имя")
+    email = models.EmailField(verbose_name="Email")
+    hotel = models.CharField(max_length=255, blank=True, null=True, verbose_name="Отель")
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, verbose_name="Категория", default="other")
+    question = models.TextField(verbose_name="Текст вопроса", null=True, blank=True)
+    language = models.CharField(max_length=5, choices=LANG_CHOICES, verbose_name="Язык", default="ru")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата и время")
 
     def __str__(self):
-        return f"Question from {self.name}"
+        return f"{self.name} — {self.get_category_display()} ({self.get_language_display()})"
 
     class Meta:
         verbose_name = "Вопрос"
         verbose_name_plural = "Вопросы"
+        ordering = ['-created_at']
+
 
 # Контакты
 class ContactInfo(models.Model):

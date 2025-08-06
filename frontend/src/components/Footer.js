@@ -38,7 +38,7 @@ const Footer = () => {
           <p>Email: <a href="mailto:CostaSolinfo.Malaga@gmail.com">
             CostaSolinfo.Malaga@gmail.com</a>
           </p>
-          <p>WhatsApp: <a href="https://wa.me/34600000000">+34 600 00 00 00</a></p>
+          <p>WhatsApp: <a href="https://wa.me/34660535089">+34 660 535 089</a></p>
 
           <div className="footer-socials">
             <a href="https://facebook.com" target="_blank" rel="noreferrer">
@@ -47,7 +47,7 @@ const Footer = () => {
             <a href="https://instagram.com" target="_blank" rel="noreferrer">
               <i className="fab fa-instagram"></i>
             </a>
-            <a href="https://wa.me/34600000000" target="_blank" rel="noreferrer">
+            <a href="https://wa.me/34660535089" target="_blank" rel="noreferrer">
               <i className="fab fa-whatsapp"></i>
             </a>
           </div>

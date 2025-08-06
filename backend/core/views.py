@@ -12,16 +12,16 @@ from core.models import (
     PageBanner, Hotel, PickupPoint, TransferNotification,
     TransferInquiry, TransferScheduleItem, TransferScheduleGroup,
     PrivacyPolicy, InfoMeetingScheduleItem, ExcursionRegionPrice,
-    PageBanner, ExcursionPickupPoint
+    PageBanner, ExcursionPickupPoint, Question
     )
-from core.utils import send_html_email
+from core.utils import send_html_email, send_question_notification
 from .serializers import (
     HomepageSerializer, InfoMeetingSerializer, AirportTransferSerializer,
     QuestionSerializer, ContactInfoSerializer, AboutUsSerializer, ExcursionSerializer,
     TransferScheduleRequestSerializer, TransferScheduleResponseSerializer,
     HotelSerializer, SimpleHotelSerializer, TransferNotificationCreateSerializer,
     TransferInquirySerializer, PrivacyPolicySerializer, InfoMeetingScheduleItemSerializer,
-    PageBannerSerializer, ExcursionDetailSerializer
+    PageBannerSerializer, ExcursionDetailSerializer, QuestionSerializer
     )
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.contrib import admin
@@ -527,12 +527,31 @@ class TransferInquiryViewSet(viewsets.ModelViewSet):
         email.send()
 
 
-class QuestionView(RetrieveAPIView):
-    queryset = Question.objects.all()
-    serializer_class = QuestionSerializer
+# class QuestionView(RetrieveAPIView):
+#     queryset = Question.objects.all()
+#     serializer_class = QuestionSerializer
 
-    def get_object(self):
-        return self.queryset.first()
+#     def get_object(self):
+#         return self.queryset.first()
+
+class QuestionCreateAPIView(APIView):
+    def post(self, request):
+        language = request.data.get("language", "ru")
+        question_text = request.data.get("question")
+
+        # подставляем текст в правильное переводное поле
+        data = request.data.copy()
+        data[f"question_{language}"] = question_text
+        data["language"] = language  # фиксируем язык явно
+
+        serializer = QuestionSerializer(data=data)
+        if serializer.is_valid():
+            question = serializer.save()
+            send_question_notification(question, language)
+            return Response({"message": "Вопрос успешно отправлен."}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 class ContactInfoView(RetrieveAPIView):
     queryset = ContactInfo.objects.all()

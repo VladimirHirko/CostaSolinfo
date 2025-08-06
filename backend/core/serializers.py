@@ -3,7 +3,7 @@ from core.models import (
     Question, ContactInfo, AboutUs, TransferSchedule,
     Hotel, PickupPoint, TransferNotification, TransferInquiry,
     PrivacyPolicy, InfoMeetingScheduleItem, ExcursionContentBlock,
-    PageBanner, ExcursionImage
+    PageBanner, ExcursionImage, Question
     )
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -238,7 +238,7 @@ class SimpleHotelSerializer(serializers.ModelSerializer):
 class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
-        fields = ['name', 'email', 'message', 'created_at']
+        fields = '__all__'
 
 
 

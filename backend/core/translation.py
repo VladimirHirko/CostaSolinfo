@@ -23,7 +23,7 @@ class AirportTransferTranslationOptions(TranslationOptions):
 # Задать вопрос
 @register(Question)
 class QuestionTranslationOptions(TranslationOptions):
-    fields = ('message',)
+    fields = ('question',)
 
 # Контакты
 @register(ContactInfo)

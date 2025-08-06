@@ -127,185 +127,186 @@ const ExcursionDetailPage = () => {
   return (
     <>
       <PageBanner page="excursions" />
+      <div className="page-container">
+        <div className="excursion-detail-container">
+          <h1>{excursion.localized_title}</h1>
 
-      <div className="excursion-detail-container">
-        <h1>{excursion.localized_title}</h1>
-
-        {/* Фотогалерея */}
-        {excursion.images?.length > 0 && (
-          <div
-            className={`excursion-gallery-container ${showArrows ? "show-arrows" : ""}`}
-            onClick={handleGalleryTap}
-          >
-            <button
-              className="gallery-arrow left"
-              onClick={(e) => {
-                e.stopPropagation();
-                document.querySelector(".excursion-gallery").scrollBy({ left: -300, behavior: "smooth" });
-              }}
+          {/* Фотогалерея */}
+          {excursion.images?.length > 0 && (
+            <div
+              className={`excursion-gallery-container ${showArrows ? "show-arrows" : ""}`}
+              onClick={handleGalleryTap}
             >
-              ‹
-            </button>
-            <div className="excursion-gallery">
-              {excursion.images.map((img, idx) => (
-                <img
-                  key={idx}
-                  src={img}
-                  alt={`Фото ${idx + 1}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openModal(idx);
-                  }}
-                />
-              ))}
-            </div>
-            <button
-              className="gallery-arrow right"
-              onClick={(e) => {
-                e.stopPropagation();
-                document.querySelector(".excursion-gallery").scrollBy({ left: 300, behavior: "smooth" });
-              }}
-            >
-              ›
-            </button>
-          </div>
-        )}
-
-
-
-        {modalOpen && (
-          <div className="modal" onClick={closeModal}>
-            <span className="close-btn" onClick={closeModal}>×</span>
-            <span className="modal-arrow left" onClick={(e) => { e.stopPropagation(); prevImage(); }}>‹</span>
-            <img src={excursion.images[currentIndex]} alt={`Фото ${currentIndex + 1}`} />
-            <span className="modal-arrow right" onClick={(e) => { e.stopPropagation(); nextImage(); }}>›</span>
-          </div>
-        )}
-
-
-
-
-        {/* Основной контент */}
-        <div className="excursion-content">
-          {excursion.content_blocks?.map((block, idx) => (
-            <div key={idx} className="excursion-block">
-              <h2>{block.localized_title}</h2>
-              <div dangerouslySetInnerHTML={{ __html: block.localized_content }} />
-            </div>
-          ))}
-        </div>
-
-        
-
-        {/* Блок выбора отеля */}
-        <div className="hotel-select-block">
-          <h3 className="hotel-title">🚍 {t("excursion.select_hotel_title")}</h3>
-          {/*<p className="hotel-instruction">{t("excursion.select_hotel_instruction")}</p>*/}
-
-          <div className="hotel-select">
-            <label htmlFor="hotel-input" className="hotel-label">
-              {t("choose_your_hotel")}
-            </label>
-            <input
-              id="hotel-input"
-              type="text"
-              value={hotelQuery}
-              autoComplete="off"
-              onChange={(e) => {
-                setHotelQuery(e.target.value);
-                setSelectedHotel(null);
-              }}
-              placeholder={t("excursion.select_hotel_placeholder")}
-            />
-            {hotelOptions.length > 0 && (
-              <ul>
-                {hotelOptions.map((hotel) => (
-                  <li
-                    key={hotel.id}
-                    onClick={() => {
-                      handleSelectHotel(hotel);
-                      setHotelOptions([]); // очистить список
-                      document.getElementById("hotel-input").blur(); // убрать фокус
+              <button
+                className="gallery-arrow left"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  document.querySelector(".excursion-gallery").scrollBy({ left: -300, behavior: "smooth" });
+                }}
+              >
+                ‹
+              </button>
+              <div className="excursion-gallery">
+                {excursion.images.map((img, idx) => (
+                  <img
+                    key={idx}
+                    src={img}
+                    alt={`Фото ${idx + 1}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openModal(idx);
                     }}
-                  >
-                    {hotel.name}
-                  </li>
+                  />
                 ))}
-              </ul>
-            )}
+              </div>
+              <button
+                className="gallery-arrow right"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  document.querySelector(".excursion-gallery").scrollBy({ left: 300, behavior: "smooth" });
+                }}
+              >
+                ›
+              </button>
+            </div>
+          )}
+
+
+
+          {modalOpen && (
+            <div className="modal" onClick={closeModal}>
+              <span className="close-btn" onClick={closeModal}>×</span>
+              <span className="modal-arrow left" onClick={(e) => { e.stopPropagation(); prevImage(); }}>‹</span>
+              <img src={excursion.images[currentIndex]} alt={`Фото ${currentIndex + 1}`} />
+              <span className="modal-arrow right" onClick={(e) => { e.stopPropagation(); nextImage(); }}>›</span>
+            </div>
+          )}
+
+
+
+
+          {/* Основной контент */}
+          <div className="excursion-content">
+            {excursion.content_blocks?.map((block, idx) => (
+              <div key={idx} className="excursion-block">
+                <h2>{block.localized_title}</h2>
+                <div dangerouslySetInnerHTML={{ __html: block.localized_content }} />
+              </div>
+            ))}
           </div>
-        </div>
+
+          
+
+          {/* Блок выбора отеля */}
+          <div className="hotel-select-block">
+            <h3 className="hotel-title">🚍 {t("excursion.select_hotel_title")}</h3>
+            {/*<p className="hotel-instruction">{t("excursion.select_hotel_instruction")}</p>*/}
+
+            <div className="hotel-select">
+              <label htmlFor="hotel-input" className="hotel-label">
+                {t("choose_your_hotel")}
+              </label>
+              <input
+                id="hotel-input"
+                type="text"
+                value={hotelQuery}
+                autoComplete="off"
+                onChange={(e) => {
+                  setHotelQuery(e.target.value);
+                  setSelectedHotel(null);
+                }}
+                placeholder={t("excursion.select_hotel_placeholder")}
+              />
+              {hotelOptions.length > 0 && (
+                <ul>
+                  {hotelOptions.map((hotel) => (
+                    <li
+                      key={hotel.id}
+                      onClick={() => {
+                        handleSelectHotel(hotel);
+                        setHotelOptions([]); // очистить список
+                        document.getElementById("hotel-input").blur(); // убрать фокус
+                      }}
+                    >
+                      {hotel.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
 
 
 
-        {/* Карта с точкой сбора */}
-        {pickupInfo && (
-          <div ref={mapRef} className="pickup-section">
-            {/* Время и цены */}
-            <div className="pickup-details">
-              <p className="pickup-time">
-                ⏰ {t("excursion_pickup_time")}: <span>{pickupInfo.time}</span>
-              </p>
+          {/* Карта с точкой сбора */}
+          {pickupInfo && (
+            <div ref={mapRef} className="pickup-section">
+              {/* Время и цены */}
+              <div className="pickup-details">
+                <p className="pickup-time">
+                  ⏰ {t("excursion_pickup_time")}: <span>{pickupInfo.time}</span>
+                </p>
 
-              {(pickupInfo.adult_price || pickupInfo.child_price) && (
-                <div className="excursion-prices">
-                  {pickupInfo.adult_price && (
-                    <p className="price-adult">
-                      💶 {t("adult_price")}: {pickupInfo.adult_price} €
-                    </p>
-                  )}
-                  {pickupInfo.child_price && (
-                    <>
-                      <p className="price-child">
-                        👧 {t("child_price")}: {pickupInfo.child_price} €
+                {(pickupInfo.adult_price || pickupInfo.child_price) && (
+                  <div className="excursion-prices">
+                    {pickupInfo.adult_price && (
+                      <p className="price-adult">
+                        💶 {t("adult_price")}: {pickupInfo.adult_price} €
                       </p>
-                      <p className="child-note">
-                        {t("excursion.child_free_note")}
-                      </p>
-                    </>
-                  )}
+                    )}
+                    {pickupInfo.child_price && (
+                      <>
+                        <p className="price-child">
+                          👧 {t("child_price")}: {pickupInfo.child_price} €
+                        </p>
+                        <p className="child-note">
+                          {t("excursion.child_free_note")}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Заголовок по центру */}
+              <h3 className="pickup-title">{t("pickup_point")}</h3>
+
+              {/* Карта */}
+              <PickupMap hotel={selectedHotel} pickupPoint={pickupInfo} />
+
+              {/* Кнопка Google Maps под картой слева */}
+              {pickupInfo.lat && pickupInfo.lng && (
+                <div className="google-maps-button-container">
+                  <a
+                    href={`https://www.google.com/maps?q=${pickupInfo.lat},${pickupInfo.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="book-button"
+                  >
+                    📍 {t("open_in_google_maps")}
+                  </a>
                 </div>
               )}
             </div>
+          )}
 
-            {/* Заголовок по центру */}
-            <h3 className="pickup-title">{t("pickup_point")}</h3>
+          {/* Сообщение об ошибке */}
+          {error && (
+            <p style={{ color: "red", textAlign: "center", marginTop: "10px" }}>
+              {error}
+            </p>
+          )}
 
-            {/* Карта */}
-            <PickupMap hotel={selectedHotel} pickupPoint={pickupInfo} />
-
-            {/* Кнопка Google Maps под картой слева */}
-            {pickupInfo.lat && pickupInfo.lng && (
-              <div className="google-maps-button-container">
-                <a
-                  href={`https://www.google.com/maps?q=${pickupInfo.lat},${pickupInfo.lng}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="book-button"
-                >
-                  📍 {t("open_in_google_maps")}
-                </a>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Сообщение об ошибке */}
-        {error && (
-          <p style={{ color: "red", textAlign: "center", marginTop: "10px" }}>
-            {error}
-          </p>
-        )}
-
-        {/* Временно скрыли кнопку */}
-        {false && (
-          <button
-            className="book-button"
-            disabled={!selectedHotel || !pickupInfo}
-          >
-            {t("show_info")}
-          </button>
-        )}
+          {/* Временно скрыли кнопку */}
+          {false && (
+            <button
+              className="book-button"
+              disabled={!selectedHotel || !pickupInfo}
+            >
+              {t("show_info")}
+            </button>
+          )}
+        </div>
       </div>
     </>
   );
