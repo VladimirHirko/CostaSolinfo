@@ -227,7 +227,8 @@ class Question(models.Model):
     question = models.TextField(verbose_name="Текст вопроса", null=True, blank=True)
     language = models.CharField(max_length=5, choices=LANG_CHOICES, verbose_name="Язык", default="ru")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата и время")
-
+    answer = models.TextField("Ответ", blank=True, null=True)
+    
     def __str__(self):
         return f"{self.name} — {self.get_category_display()} ({self.get_language_display()})"
 

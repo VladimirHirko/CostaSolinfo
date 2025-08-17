@@ -28,7 +28,7 @@ from django.utils.safestring import mark_safe
 from django.utils.html import format_html
 from django.utils.timezone import now, localtime
 from django.utils.translation import activate, deactivate_all, gettext as _
-from core.utils import send_html_email
+from core.utils import send_html_email, send_answer_notification
 from .forms import ExcursionAdminForm, BulkTransferScheduleForm, ExcursionPickupPointForm
 
 # Баннеры на старницах
@@ -88,18 +88,29 @@ class AirportTransferAdmin(admin.ModelAdmin):
 # Задать вопрос
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ("name", "email", "category", "created_at")
-    list_filter = ("category", "created_at")
+    list_display = ("name", "email", "category", "language_with_flag", "created_at")
+    list_filter = ("category", "language", "created_at")
     search_fields = ("name", "email", "question")
-    readonly_fields = ("created_at",)
+    readonly_fields = ("name", "email", "hotel", "category", "language", "question", "created_at")
+    fields = (
+        "name", "email", "hotel", "category", "language", "question", "answer", "created_at"
+    )
 
     def language_with_flag(self, obj):
         flags = {
-            'ru': '🇷🇺', 'en': '🇬🇧', 'es': '🇪🇸', 'lt': '🇱🇹',
-            'lv': '🇱🇻', 'et': '🇪🇪', 'uk': '🇺🇦'
+            'ru': '🇷🇺', 'en': '🇬🇧', 'es': '🇪🇸',
+            'lt': '🇱🇹', 'lv': '🇱🇻', 'et': '🇪🇪', 'uk': '🇺🇦'
         }
         return format_html('{}&nbsp;{}', flags.get(obj.language, ''), obj.get_language_display())
     language_with_flag.short_description = 'Язык'
+
+    def save_model(self, request, obj, form, change):
+        send_email = False
+        if 'answer' in form.changed_data and obj.answer:
+            send_email = True
+        super().save_model(request, obj, form, change)
+        if send_email:
+            send_answer_notification(obj)
 
 # Контакты
 @admin.register(ContactInfo)

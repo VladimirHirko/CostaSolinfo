@@ -132,3 +132,34 @@ def send_question_notification(question, lang_code=None):
     msg.send()
 
 
+def send_answer_notification(question):
+    if not question.answer:
+        return
+
+    lang_code = getattr(question, "language", "ru")
+    subject = {
+        'ru': 'Ответ на ваш вопрос',
+        'en': 'Answer to your question',
+        'es': 'Respuesta a su pregunta',
+        'lt': 'Atsakymas į jūsų klausimą',
+        'lv': 'Atbilde uz jūsu jautājumu',
+        'et': 'Vastus teie küsimusele',
+        'uk': 'Відповідь на ваше запитання',
+    }.get(lang_code, 'Ответ на ваш вопрос')
+
+    context = {
+        "question": question,
+        "lang_code": lang_code,
+    }
+
+    text_body = render_to_string("emails/answer_notification.txt", context)
+    html_body = render_to_string("emails/answer_notification.html", context)
+
+    msg = EmailMultiAlternatives(
+        subject,
+        text_body,
+        settings.DEFAULT_FROM_EMAIL,
+        [question.email],
+    )
+    msg.attach_alternative(html_body, "text/html")
+    msg.send()

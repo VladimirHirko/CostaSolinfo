@@ -1,0 +1,11 @@
+Name: {{ question.name }}
+Email: {{ question.email }}
+Hotel: {{ question.hotel|default:"-" }}
+Category: {{ question.get_category_display }}
+Language: {{ question.language }}
+
+Question:
+{{ question.question }}
+
+Answer:
+{{ question.answer }}
