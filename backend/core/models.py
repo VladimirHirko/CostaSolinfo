@@ -6,6 +6,9 @@ from django.conf import settings
 from ckeditor.fields import RichTextField
 from django.contrib.gis.db import models as geomodels
 
+import logging
+logger = logging.getLogger(__name__)
+
 TRANSFER_TYPE_CHOICES = [
         ('group', 'Групповой'),
         ('private', 'Индивидуальный'),
@@ -220,15 +223,21 @@ class Question(models.Model):
         ('uk', 'Українська'),
     ]
 
+    SOURCE_CHOICES = [
+        ('ask', 'Страница «Задать вопрос»'),
+        ('contacts', 'Страница «Контакты»'),
+    ]
+
     name = models.CharField(max_length=100, verbose_name="Имя")
     email = models.EmailField(verbose_name="Email")
     hotel = models.CharField(max_length=255, blank=True, null=True, verbose_name="Отель")
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, verbose_name="Категория", default="other")
-    question = models.TextField(verbose_name="Текст вопроса", null=True, blank=True)
+    question = models.TextField(verbose_name="Текст вопроса", blank=False, null=False)
     language = models.CharField(max_length=5, choices=LANG_CHOICES, verbose_name="Язык", default="ru")
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, verbose_name="Источник", default='ask')  # ✅ NEW
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата и время")
     answer = models.TextField("Ответ", blank=True, null=True)
-    
+
     def __str__(self):
         return f"{self.name} — {self.get_category_display()} ({self.get_language_display()})"
 
@@ -236,6 +245,11 @@ class Question(models.Model):
         verbose_name = "Вопрос"
         verbose_name_plural = "Вопросы"
         ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        logger.debug("[Question.save] BEFORE id=%s question=%r", getattr(self, 'id', None), getattr(self, 'question', None))
+        super().save(*args, **kwargs)
+        logger.debug("[Question.save] AFTER  id=%s question=%r", getattr(self, 'id', None), getattr(self, 'question', None))
 
 
 # Контакты
@@ -600,3 +614,21 @@ class PrivacyPolicy(models.Model):
 
     def __str__(self):
         return f"Политика конфиденциальности ({self.get_language_code_display()})"
+
+
+class TeamMember(models.Model):
+    name = models.CharField(max_length=100, verbose_name="Имя")
+    position = models.CharField(max_length=100, verbose_name="Должность")
+    photo = models.ImageField(upload_to='team/', verbose_name="Фото")
+    email = models.EmailField(blank=True, null=True, verbose_name="Email")
+    whatsapp = models.CharField(max_length=20, blank=True, null=True, verbose_name="WhatsApp")
+    order = models.PositiveIntegerField(default=0, verbose_name="Порядок отображения")
+
+    class Meta:
+        ordering = ['order']
+        verbose_name = "Сотрудник"
+        verbose_name_plural = "Сотрудники"
+
+    def __str__(self):
+        return self.name
+

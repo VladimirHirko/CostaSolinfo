@@ -12,7 +12,7 @@ from core.views import (
     available_hotels_for_transfer, TransferNotificationViewSet, TransferInquiryViewSet,
     confirm_transfer_notification, PrivacyPolicyView, info_meeting_schedule,
     ExcursionListView, PageBannerView, ExcursionDetailView, pickup_point_detail,
-    excursion_pickup_view, QuestionCreateAPIView
+    excursion_pickup_view, QuestionCreateAPIView, TeamMemberListAPIView
 )
 
 transfer_notification_view = TransferNotificationViewSet.as_view({'post': 'create'})
@@ -52,8 +52,9 @@ urlpatterns = [
     path('api/', include(router.urls)),
     path('api/hotels/', views.hotel_search, name='hotel_search'),
     path('api/privacy-policy/', PrivacyPolicyView.as_view(), name='privacy-policy'),
-    path("api/questions/", QuestionCreateAPIView.as_view(), name="create-question"),
-    path('api/contact-questions/', QuestionCreateAPIView.as_view(), name='contact-questions'),
+    #path("api/questions/", QuestionCreateAPIView.as_view(), name="create-question"),
+    path("api/contact-questions/", QuestionCreateAPIView.as_view(), name="contact-questions"),
+    path('api/about/team/', TeamMemberListAPIView.as_view(), name='team-member-list'),
 
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

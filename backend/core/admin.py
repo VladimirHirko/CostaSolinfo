@@ -17,7 +17,7 @@ from .models import (
     TransferInquiry, TransferInquiryLog, TransferScheduleItem,
     TransferChangeLog, PrivacyPolicy, Homepage, InfoMeetingScheduleItem,
     ExcursionPickupPoint, ExcursionRegionPrice, ExcursionContentBlock, 
-    ExcursionPickupReference, ExcursionImage, Question
+    ExcursionPickupReference, ExcursionImage, Question, TeamMember
 )
 from leaflet.admin import LeafletGeoAdmin
 from leaflet.forms.widgets import LeafletWidget
@@ -88,15 +88,21 @@ class AirportTransferAdmin(admin.ModelAdmin):
 # Задать вопрос
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ("name", "email", "category", "language_with_flag", "created_at")
-    list_filter = ("category", "language", "created_at")
+    list_display = ("name", "email", "category", "source_badge", "language_with_flag", "created_at", "question_short")
+    list_filter = ("category", "source", "language", "created_at")  # ✅ фильтр по источнику
     search_fields = ("name", "email", "question")
-    readonly_fields = ("name", "email", "hotel", "category", "language", "question", "created_at")
-    fields = (
-        "name", "email", "hotel", "category", "language", "question", "answer", "created_at"
-    )
+    date_hierarchy = "created_at"
+
+    # делаем все входящие поля только для чтения, кроме ответа
+    readonly_fields = ("name", "email", "hotel", "category", "language", "source", "question", "created_at")
+    fields = ("name", "email", "hotel", "category", "language", "source", "question", "answer", "created_at")
+
+    def question_short(self, obj):
+        return (obj.question or "—")[:80]
+    question_short.short_description = "Текст (превью)"
 
     def language_with_flag(self, obj):
+        from django.utils.html import format_html
         flags = {
             'ru': '🇷🇺', 'en': '🇬🇧', 'es': '🇪🇸',
             'lt': '🇱🇹', 'lv': '🇱🇻', 'et': '🇪🇪', 'uk': '🇺🇦'
@@ -104,13 +110,31 @@ class QuestionAdmin(admin.ModelAdmin):
         return format_html('{}&nbsp;{}', flags.get(obj.language, ''), obj.get_language_display())
     language_with_flag.short_description = 'Язык'
 
+    def source_badge(self, obj):
+        from django.utils.html import format_html
+        labels = {'ask': 'Задать вопрос', 'contacts': 'Контакты'}
+        bg = {'ask': '#eef6ff', 'contacts': '#e8fff3'}
+        border = {'ask': '#cfe6ff', 'contacts': '#bcecd3'}
+        return format_html(
+            '<span style="padding:3px 8px;border-radius:10px;'
+            'background:{};border:1px solid {};font-size:12px;">{}</span>',
+            bg.get(obj.source, '#f7f7f7'),
+            border.get(obj.source, '#eaeaea'),
+            labels.get(obj.source, obj.source),
+        )
+    source_badge.short_description = "Источник"
+
     def save_model(self, request, obj, form, change):
+        if not obj.question:
+            obj.question = form.initial.get('question')
+
         send_email = False
         if 'answer' in form.changed_data and obj.answer:
             send_email = True
         super().save_model(request, obj, form, change)
         if send_email:
             send_answer_notification(obj)
+
 
 # Контакты
 @admin.register(ContactInfo)
@@ -121,6 +145,12 @@ class ContactInfoAdmin(admin.ModelAdmin):
 @admin.register(AboutUs)
 class AboutUsAdmin(admin.ModelAdmin):
     list_display = ('title',)
+
+@admin.register(TeamMember)
+class TeamMemberAdmin(admin.ModelAdmin):
+    list_display = ('name', 'position', 'email', 'whatsapp', 'order')
+    ordering = ('order',)
+
 
 class PrivacyPolicyAdminForm(forms.ModelForm):
     class Meta:
@@ -358,12 +388,6 @@ class ExcursionContentBlockForm(forms.ModelForm):
         }
 
 
-# class ExcursionContentBlockInline(admin.TabularInline):
-#     model = ExcursionContentBlock
-#     form = ExcursionContentBlockForm
-#     extra = 1  # одно пустое поле для добавления
-#     ordering = ['order']
-
 @admin.register(ExcursionContentBlock)
 class ExcursionContentBlockAdmin(admin.ModelAdmin):
     list_display = ('excursion', 'block_type', 'order', 'title_ru')
@@ -579,42 +603,6 @@ class PrivatePickupPointAdmin(admin.ModelAdmin):
             </div>
         ''')
         return super().changeform_view(request, object_id, form_url, extra_context=extra_context)
-
-# # Массовое добавление даты и времени для трансферов
-# @admin.register(TransferSchedule)
-# class TransferScheduleAdmin(admin.ModelAdmin):
-#     list_display = ['transfer_type', 'hotel', 'departure_date', 'departure_time', 'pickup_point', 'passenger_last_name']
-#     list_filter = ['transfer_type', 'departure_date']
-#     search_fields = ['hotel__name', 'passenger_last_name']
-
-#     def save_formset(self, request, form, formset, change):
-#         """
-#         При сохранении каждого TransferSchedule внутри группы —
-#         автоматически подставляем дату и тип трансфера из родительской группы.
-#         """
-#         instances = formset.save(commit=False)
-#         for obj in instances:
-#             if form.instance:  # это объект TransferScheduleGroup
-#                 obj.group = form.instance
-#                 obj.departure_date = form.instance.date
-#                 if not obj.transfer_type:
-#                     obj.transfer_type = form.instance.transfer_type
-#             obj.save()
-#         formset.save_m2m()
-
-# @admin.register(TransferScheduleItem)
-# class TransferScheduleItemAdmin(admin.ModelAdmin):
-#     list_display = ('hotel', 'group', 'time', 'tourist_last_name')
-#     list_filter = ('group', 'hotel')
-#     search_fields = ('tourist_last_name',)
-
-# # Inline для TransferSchedule
-# class TransferScheduleInline(admin.TabularInline):
-#     model = TransferSchedule
-#     extra = 1  # сколько пустых строк по умолчанию
-#     autocomplete_fields = ['hotel', 'pickup_point']
-#     fields = ('hotel', 'departure_time', 'pickup_point', 'passenger_last_name')
-#     show_change_link = True
 
 class TransferScheduleItemInline(admin.TabularInline):
     model = TransferSchedule

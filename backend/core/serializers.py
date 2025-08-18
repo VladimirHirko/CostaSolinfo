@@ -1,14 +1,21 @@
+import re
+import unicodedata
+import logging
 from core.models import (
     Homepage, Excursion, InfoMeeting, AirportTransfer, 
     Question, ContactInfo, AboutUs, TransferSchedule,
     Hotel, PickupPoint, TransferNotification, TransferInquiry,
     PrivacyPolicy, InfoMeetingScheduleItem, ExcursionContentBlock,
-    PageBanner, ExcursionImage, Question
+    PageBanner, ExcursionImage, Question, TeamMember
     )
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 from rest_framework import serializers
 from .utils import BaseTranslationSerializer  # путь зависит от твоей структуры проекта
+
+logger = logging.getLogger(__name__)
+# лид/трейл-очистка с учётом невидимых пробелов
+_TRIM_RE = re.compile(r'^[\s\u00A0\u200B\u200C\u200D\uFEFF]+|[\s\u00A0\u200B\u200C\u200D\uFEFF]+$')
 
 class PageBannerSerializer(serializers.ModelSerializer):
     titles = serializers.SerializerMethodField()
@@ -235,10 +242,56 @@ class SimpleHotelSerializer(serializers.ModelSerializer):
 
 
 
+def _normalize_text(val: str) -> str:
+    if val is None:
+        return ''
+    s = unicodedata.normalize('NFKC', str(val))
+    s = s.replace('\u00A0', ' ')
+    s = s.replace('\u200B', '').replace('\u200C', '').replace('\u200D', '').replace('\uFEFF', '')
+    s = _TRIM_RE.sub('', s)
+    s = re.sub(r'\s+', ' ', s)
+    return s
+
 class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
-        fields = '__all__'
+        fields = '__all__'  # убедись, что 'question' включён и не read_only
+
+    def to_internal_value(self, data):
+        raw = None
+        picked = None
+        for key in ('question', 'message', 'text', 'msg', 'body', 'content'):
+            if key in data and data.get(key) is not None:
+                raw = data.get(key)
+                picked = key
+                break
+        logger.debug("[QuestionSerializer] picked=%r raw=%r", picked, raw)
+        cleaned = _normalize_text(raw if raw is not None else '')
+        logger.debug("[QuestionSerializer] cleaned=%r", cleaned)
+
+        mutable = dict(data)
+        mutable['question'] = cleaned  # проброс в нужное поле
+        return super().to_internal_value(mutable)
+
+    def validate(self, attrs):
+        txt = attrs.get('question', '')
+        if not any(ch.isalnum() for ch in txt):
+            raise serializers.ValidationError({"question": "Please enter a valid message."})
+        return attrs
+
+    def create(self, validated_data):
+        # ⛑ страховка: создаём явно и проверяем
+        qtxt = validated_data.get('question', '')
+        instance = Question.objects.create(**validated_data)
+        logger.debug("[QuestionSerializer.create] created id=%s question_before=%r", instance.id, instance.question)
+
+        # Если вдруг кто-то обнулил — восстанавливаем
+        if not instance.question and qtxt:
+            instance.question = qtxt
+            instance.save(update_fields=['question'])
+            logger.debug("[QuestionSerializer.create] restored question id=%s question_after=%r", instance.id, instance.question)
+
+        return instance
 
 
 
@@ -256,6 +309,12 @@ class AboutUsSerializer(BaseTranslationSerializer):
     class Meta:
         model = AboutUs
         extra_fields = ['image']  # если есть
+
+class TeamMemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TeamMember
+        fields = ['id', 'name', 'position', 'photo', 'email', 'whatsapp']
+
 
 # Политика конфиденциальности
 class PrivacyPolicySerializer(serializers.ModelSerializer):

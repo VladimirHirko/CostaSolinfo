@@ -1,10 +1,11 @@
 import Levenshtein
 from datetime import datetime
-from rest_framework.generics import RetrieveAPIView, ListAPIView
+from rest_framework.generics import RetrieveAPIView, ListAPIView, CreateAPIView
 from rest_framework.views import APIView
-from rest_framework.decorators import api_view  # 🔧 Добавь это
+from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
 from rest_framework import viewsets, status
+from rest_framework.throttling import AnonRateThrottle
 from django.http import JsonResponse
 from core.models import (
     Homepage, InfoMeeting, AirportTransfer, Question, 
@@ -12,7 +13,7 @@ from core.models import (
     PageBanner, Hotel, PickupPoint, TransferNotification,
     TransferInquiry, TransferScheduleItem, TransferScheduleGroup,
     PrivacyPolicy, InfoMeetingScheduleItem, ExcursionRegionPrice,
-    PageBanner, ExcursionPickupPoint, Question
+    PageBanner, ExcursionPickupPoint, Question, TeamMember
     )
 from core.utils import send_html_email, send_question_notification
 from .serializers import (
@@ -21,15 +22,18 @@ from .serializers import (
     TransferScheduleRequestSerializer, TransferScheduleResponseSerializer,
     HotelSerializer, SimpleHotelSerializer, TransferNotificationCreateSerializer,
     TransferInquirySerializer, PrivacyPolicySerializer, InfoMeetingScheduleItemSerializer,
-    PageBannerSerializer, ExcursionDetailSerializer, QuestionSerializer
+    PageBannerSerializer, ExcursionDetailSerializer, QuestionSerializer, TeamMemberSerializer
     )
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.contrib import admin
+from django.conf import settings
+
 from django.urls import path
 from django.utils.translation import activate, get_language, gettext as _
 from django.shortcuts import render, redirect
 from .forms import BulkTransferScheduleForm
 from .models import Hotel, TransferSchedule
+
 from django.template.loader import render_to_string
 
 
@@ -37,6 +41,11 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from Levenshtein import distance as levenshtein_distance
 from .models import TransferScheduleGroup, TransferSchedule, PickupPoint, Hotel
+from .throttling import ContactFormThrottle  # если у тебя оттуда
+from .utils import send_question_notification
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Главное правило: RetrieveAPIView + queryset + serializer_class
 
@@ -534,22 +543,77 @@ class TransferInquiryViewSet(viewsets.ModelViewSet):
 #     def get_object(self):
 #         return self.queryset.first()
 
+class ContactFormThrottle(AnonRateThrottle):
+    rate = '5/min'  # простая защита от спама
+
 class QuestionCreateAPIView(APIView):
-    def post(self, request):
-        language = request.data.get("language", "ru")
-        question_text = request.data.get("question")
+    throttle_classes = [ContactFormThrottle]
+    queryset = Question.objects.all()
+    serializer_class = QuestionSerializer
 
-        # подставляем текст в правильное переводное поле
-        data = request.data.copy()
-        data[f"question_{language}"] = question_text
-        data["language"] = language  # фиксируем язык явно
+    def post(self, request, *args, **kwargs):
+        handler_signature = "QuestionCreateAPIView-vFinal"
 
-        serializer = QuestionSerializer(data=data)
-        if serializer.is_valid():
-            question = serializer.save()
-            send_question_notification(question, language)
-            return Response({"message": "Вопрос успешно отправлен."}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # 0) берём входящие данные (делаем обычный dict)
+        try:
+            incoming = request.data
+            data = dict(incoming)  # DRF Request.data обычно уже dict
+        except Exception:
+            # на всякий случай
+            data = request.data.copy()
+
+        # 1) язык
+        language = (data.get("language") or request.headers.get("Accept-Language") or "ru")[:5]
+        data["language"] = language
+
+        # 2) источник (если фронт не прислал)
+        data.setdefault("source", "contacts" if "contact-questions" in request.path else "ask")
+
+        # 3) категория
+        if data.get("category") not in dict(Question.CATEGORY_CHOICES):
+            data["category"] = "other"
+
+        logger.debug("[QuestionCreateAPIView] incoming path=%r content_type=%r data=%r",
+                     request.path, request.content_type, incoming)
+
+        if settings.DEBUG and request.GET.get('debug') == '1':
+            return Response({
+                "handler": handler_signature,
+                "incoming": incoming,
+                "normalized": data
+            }, status=200)
+
+        # 4) сериализация и сохранение
+        serializer = QuestionSerializer(data=data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        logger.debug("[QuestionCreateAPIView] validated_data=%r", serializer.validated_data)
+
+        obj = serializer.save()
+        obj.refresh_from_db(fields=['question', 'language', 'source'])
+        logger.debug("[QuestionCreateAPIView] AFTER SAVE: id=%s, source=%s, lang=%s, question=%r",
+                     obj.id, obj.source, obj.language, obj.question)
+
+        # 5) страховка: фиксируем оригинал и проверим, не стерлось ли после уведомления
+        _orig_q = obj.question
+
+        try:
+            send_question_notification(obj, language)  # ВАЖНО: внутри ничего не должно присваивать obj.question
+        except Exception as e:
+            logger.exception("send_question_notification failed: %s", e)
+
+        # 6) проверка после отправки письма — не стерли ли поле
+        obj.refresh_from_db(fields=['question'])
+        if (not obj.question) and _orig_q:
+            logger.warning("[QuestionCreateAPIView] question cleared during notification; restoring. id=%s", obj.id)
+            Question.objects.filter(id=obj.id).update(question=_orig_q)
+            obj.question = _orig_q
+
+        return Response({
+            "message": "Вопрос успешно отправлен.",
+            "id": obj.id,
+            "saved_question": obj.question,   # то, что реально лежит в БД
+        }, status=status.HTTP_201_CREATED)
+
 
 
 
@@ -566,6 +630,10 @@ class AboutUsView(RetrieveAPIView):
 
     def get_object(self):
         return self.queryset.first()
+
+class TeamMemberListAPIView(ListAPIView):
+    queryset = TeamMember.objects.all()
+    serializer_class = TeamMemberSerializer
 
 class ExcursionView(RetrieveAPIView):
     queryset = Excursion.objects.all()
@@ -651,5 +719,42 @@ class PrivacyPolicyView(APIView):
             return Response({'content': policy.content})
         except PrivacyPolicy.DoesNotExist:
             return Response({'content': ''})
+
+
+
+class ContactThrottle(AnonRateThrottle):
+    rate = '5/min'   # простая антиспам-защита
+
+# @api_view(['POST'])
+# @throttle_classes([ContactThrottle])
+# def contact_questions(request):
+#     data = request.data.copy()
+#     data.setdefault('source', 'contacts')
+
+#     # ✅ нормализуем текст вопроса из разных возможных полей
+#     raw_q = data.get('question') or data.get('message') or data.get('text') or ''
+#     data['question'] = str(raw_q).strip() or None
+
+#     # защитимся от «левых» категорий
+#     if data.get('category') not in dict(Question.CATEGORY_CHOICES):
+#         data['category'] = 'other'
+
+#     # 🔥 добавим обработку языка (иначе язык остаётся "None")
+#     language = (data.get('language') or request.headers.get("Accept-Language") or "ru")[:5]
+#     data['language'] = language
+
+#     if settings.DEBUG:
+#         print('[CONTACT_FORM] incoming:', dict(request.data))
+#         print('[CONTACT_FORM] normalized:', data)
+
+#     # ✅ передаём нормализованные данные, а не request.data
+#     serializer = QuestionSerializer(data=data, context={'request': request})
+#     if serializer.is_valid():
+#         obj = serializer.save()
+#         return Response({'ok': True, 'id': obj.id}, status=status.HTTP_201_CREATED)
+
+#     return Response({'ok': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
 
 

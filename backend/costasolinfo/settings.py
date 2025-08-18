@@ -167,7 +167,21 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend']
 }
 
+REST_FRAMEWORK = {
+    'DEFAULT_THROTTLE_RATES': {
+        'contact_form': '5/minute',   # лимитируй как нужно (например, '3/minute' или '20/hour')
+    }
+}
+
 SITE_URL = "http://localhost:8000"
 
+
+# settings.py (dev)
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'console': {'class': 'logging.StreamHandler'}},
+    'root': {'handlers': ['console'], 'level': 'DEBUG'},
+}
 
 
