@@ -4,7 +4,7 @@ from rest_framework.generics import RetrieveAPIView, ListAPIView, CreateAPIView
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, throttle_classes
 from rest_framework.response import Response
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics
 from rest_framework.throttling import AnonRateThrottle
 from django.http import JsonResponse
 from core.models import (
@@ -13,7 +13,7 @@ from core.models import (
     PageBanner, Hotel, PickupPoint, TransferNotification,
     TransferInquiry, TransferScheduleItem, TransferScheduleGroup,
     PrivacyPolicy, InfoMeetingScheduleItem, ExcursionRegionPrice,
-    PageBanner, ExcursionPickupPoint, Question, TeamMember
+    PageBanner, ExcursionPickupPoint, Question, TeamMember, TransferPageContentBlock
     )
 from core.utils import send_html_email, send_question_notification
 from .serializers import (
@@ -22,7 +22,8 @@ from .serializers import (
     TransferScheduleRequestSerializer, TransferScheduleResponseSerializer,
     HotelSerializer, SimpleHotelSerializer, TransferNotificationCreateSerializer,
     TransferInquirySerializer, PrivacyPolicySerializer, InfoMeetingScheduleItemSerializer,
-    PageBannerSerializer, ExcursionDetailSerializer, QuestionSerializer, TeamMemberSerializer
+    PageBannerSerializer, ExcursionDetailSerializer, QuestionSerializer, TeamMemberSerializer,
+    TransferPageContentBlockSerializer
     )
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.contrib import admin
@@ -127,6 +128,15 @@ class AirportTransferView(RetrieveAPIView):
 
     def get_object(self):
         return self.queryset.first()
+
+class TransferContentListAPIView(generics.ListAPIView):
+    serializer_class = TransferPageContentBlockSerializer
+
+    def get_queryset(self):
+        page = self.kwargs.get('page')
+        return (TransferPageContentBlock.objects
+                .filter(page=page, is_active=True)
+                .order_by('order','id'))
 
 # Массовое добавление времени на трансферы
 class BulkTransferScheduleAdmin:

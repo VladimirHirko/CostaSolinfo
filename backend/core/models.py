@@ -26,6 +26,7 @@ class PageBanner(models.Model):
         ('contacts', 'Контакты'),
         ('about', 'О нас'),
         ('group_transfer', 'Групповой трансфер'),  # 🟢 ДОБАВЬ ЭТО
+        ('private_transfer', 'Индивидуальный трансфер')
     ]
 
     page = models.CharField(max_length=50, choices=PAGE_CHOICES, unique=True)
@@ -48,7 +49,7 @@ class PageBanner(models.Model):
 # Главной страницы
 class Homepage(models.Model):
     title = models.CharField(max_length=255, verbose_name="Заголовок")
-    subtitle = models.TextField(verbose_name="Подзаголовок")
+    subtitle = RichTextField(blank=True, default='', verbose_name="Подзаголовок")  # ← было TextField
     banner_image = models.ImageField(upload_to='uploads/homepage/', verbose_name="Баннер")
 
     def __str__(self):
@@ -107,6 +108,49 @@ class AirportTransfer(models.Model):
     class Meta:
         verbose_name = "Трансфер в аэропорт"
         verbose_name_plural = "Трансферы в аэропорт"
+
+# --- Текстовые блоки для страниц трансферов ---
+class TransferPageContentBlock(models.Model):
+    PAGE_CHOICES = [
+        ('transfer_home', 'Трансферы (общая страница)'),
+        ('transfer_group', 'Групповой трансфер'),
+        ('transfer_private', 'Индивидуальный трансфер'),
+    ]
+
+    page = models.CharField(max_length=32, choices=PAGE_CHOICES, db_index=True)
+    order = models.PositiveIntegerField(default=0, verbose_name="Порядок")
+    is_active = models.BooleanField(default=True, verbose_name="Показывать")
+
+    # Заголовки
+    title_ru = models.CharField(max_length=255, blank=True, default='', verbose_name="Заголовок [ru]")
+    title_en = models.CharField(max_length=255, blank=True, default='', verbose_name="Заголовок [en]")
+    title_es = models.CharField(max_length=255, blank=True, default='', verbose_name="Заголовок [es]")
+    title_lt = models.CharField(max_length=255, blank=True, default='', verbose_name="Заголовок [lt]")
+    title_lv = models.CharField(max_length=255, blank=True, default='', verbose_name="Заголовок [lv]")
+    title_et = models.CharField(max_length=255, blank=True, default='', verbose_name="Заголовок [et]")
+    title_uk = models.CharField(max_length=255, blank=True, default='', verbose_name="Заголовок [uk]")
+
+    # HTML-контент
+    content_ru = models.TextField(blank=True, default='', verbose_name="Содержание [ru]")
+    content_en = models.TextField(blank=True, default='', verbose_name="Содержание [en]")
+    content_es = models.TextField(blank=True, default='', verbose_name="Содержание [es]")
+    content_lt = models.TextField(blank=True, default='', verbose_name="Содержание [lt]")
+    content_lv = models.TextField(blank=True, default='', verbose_name="Содержание [lv]")
+    content_et = models.TextField(blank=True, default='', verbose_name="Содержание [et]")
+    content_uk = models.TextField(blank=True, default='', verbose_name="Содержание [uk]")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Блок контента (трансферы)"
+        verbose_name_plural = "Блоки контента (трансферы)"
+        ordering = ('page', 'order', 'id')
+
+    def __str__(self):
+        return f"{self.get_page_display()} — #{self.order} — {self.title_ru or self.title_en or 'без заголовка'}"
+
+
 
 # Детальный трансфер по категориям и отелям
 class TransferSchedule(models.Model):

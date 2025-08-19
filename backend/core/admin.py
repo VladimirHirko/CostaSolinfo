@@ -8,6 +8,7 @@ from django.http import HttpResponseRedirect, HttpResponse
 from django.urls import reverse
 from django.template.response import TemplateResponse
 from django.template.loader import render_to_string
+from modeltranslation.admin import TranslationAdmin
 from .models import (
     Hotel, Excursion, PickupPoint,
     Homepage, InfoMeeting, AirportTransfer,
@@ -17,11 +18,13 @@ from .models import (
     TransferInquiry, TransferInquiryLog, TransferScheduleItem,
     TransferChangeLog, PrivacyPolicy, Homepage, InfoMeetingScheduleItem,
     ExcursionPickupPoint, ExcursionRegionPrice, ExcursionContentBlock, 
-    ExcursionPickupReference, ExcursionImage, Question, TeamMember
+    ExcursionPickupReference, ExcursionImage, Question, TeamMember,
+    TransferPageContentBlock
 )
 from leaflet.admin import LeafletGeoAdmin
 from leaflet.forms.widgets import LeafletWidget
 from django import forms
+from ckeditor.fields import RichTextField
 from ckeditor.widgets import CKEditorWidget
 from django.urls import path
 from django.utils.safestring import mark_safe
@@ -37,27 +40,30 @@ class PageBannerAdmin(admin.ModelAdmin):
     list_display = ('page', 'title_en')  # Показываем страницу и заголовок
     search_fields = ('page', 'title_en', 'title_ru')
 
-# Главная страница
+# === Главная страница ===
 class HomepageAdminForm(forms.ModelForm):
     class Meta:
         model = Homepage
         fields = '__all__'
-        widgets = {
-            'subtitle': CKEditorWidget(),  # пример
-            'subtitle_ru': CKEditorWidget(),
-            'subtitle_en': CKEditorWidget(),
-            'subtitle_es': CKEditorWidget(),
-            'subtitle_lv': CKEditorWidget(),
-            'subtitle_lt': CKEditorWidget(),
-            'subtitle_uk': CKEditorWidget(),
-            'subtitle_et': CKEditorWidget(),
-            # Добавь другие поля, которые хочешь сделать форматируемыми
-        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Ровно как в блоках: все subtitle_* рендерим CKEditor'ом
+        for name in self.fields.keys():
+            if name.startswith('subtitle'):
+                self.fields[name].widget = CKEditorWidget()  # без лишних конфигов, как у тебя в блоках
 
 @admin.register(Homepage)
-class HomepageAdmin(admin.ModelAdmin):
+class HomepageAdmin(TranslationAdmin):  # ключевое отличие
     form = HomepageAdminForm
     list_display = ('title',)
+
+    # «сырое» сохранение HTML — как в блоках
+    def save_model(self, request, obj, form, change):
+        for key, val in request.POST.items():
+            if key == 'subtitle' or key.startswith('subtitle_'):
+                setattr(obj, key, val)
+        super().save_model(request, obj, form, change)
 
 
 
@@ -84,6 +90,28 @@ class InfoMeetingScheduleItemAdmin(admin.ModelAdmin):
 @admin.register(AirportTransfer)
 class AirportTransferAdmin(admin.ModelAdmin):
     list_display = ['id', 'departure_date', 'departure_time', 'contact_email']
+
+class TransferPageContentBlockForm(forms.ModelForm):
+    class Meta:
+        model = TransferPageContentBlock
+        fields = '__all__'
+        widgets = {
+            'content_ru': CKEditorWidget(),
+            'content_en': CKEditorWidget(),
+            'content_es': CKEditorWidget(),
+            'content_lt': CKEditorWidget(),
+            'content_lv': CKEditorWidget(),
+            'content_et': CKEditorWidget(),
+            'content_uk': CKEditorWidget(),
+        }
+
+@admin.register(TransferPageContentBlock)
+class TransferPageContentBlockAdmin(admin.ModelAdmin):
+    form = TransferPageContentBlockForm
+    list_display = ('page', 'order', 'title_ru', 'is_active', 'updated_at')
+    list_filter = ('page', 'is_active')
+    search_fields = ('title_ru', 'title_en', 'title_es')
+    ordering = ('page', 'order')
 
 # Задать вопрос
 @admin.register(Question)
@@ -376,7 +404,8 @@ class ExcursionRegionPriceInline(admin.TabularInline):
 class ExcursionContentBlockForm(forms.ModelForm):
     class Meta:
         model = ExcursionContentBlock
-        fields = '__all__'
+        # Базовые (непереводные) скрываем, работаем только с *_ru, *_en ...
+        exclude = ('title', 'content',)
         widgets = {
             'content_ru': CKEditorWidget(),
             'content_en': CKEditorWidget(),
@@ -387,14 +416,20 @@ class ExcursionContentBlockForm(forms.ModelForm):
             'content_uk': CKEditorWidget(),
         }
 
-
 @admin.register(ExcursionContentBlock)
 class ExcursionContentBlockAdmin(admin.ModelAdmin):
+    form = ExcursionContentBlockForm
     list_display = ('excursion', 'block_type', 'order', 'title_ru')
     list_filter = ('excursion', 'block_type')
     search_fields = ('title_ru', 'title_en', 'title_es')
     ordering = ['excursion', 'order']
-    form = ExcursionContentBlockForm
+
+    # «Сырое» сохранение, чтобы CKEditor HTML не чистился
+    def save_model(self, request, obj, form, change):
+        for key, val in request.POST.items():
+            if key.startswith('content_') or key.startswith('title_'):
+                setattr(obj, key, val)
+        super().save_model(request, obj, form, change)
 
 
 class ExcursionImageInline(admin.TabularInline):

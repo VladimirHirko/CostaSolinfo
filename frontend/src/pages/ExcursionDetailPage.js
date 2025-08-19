@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import PageBanner from "../components/PageBanner";
 import PickupMap from "../components/PickupMap";
 import "../styles/ExcursionDetailPage.css";
+import Breadcrumbs from "../components/Breadcrumbs";
 
 const ExcursionDetailPage = () => {
   const { id } = useParams();
@@ -128,6 +129,11 @@ const ExcursionDetailPage = () => {
     <>
       <PageBanner page="excursions" />
       <div className="page-container">
+        <Breadcrumbs items={[
+            { to: "/", label: t("home") },
+            { to: "/excursions", label: t("excursions") },
+            { label: excursion?.title || "…" }
+          ]}/>
         <div className="excursion-detail-container">
           <h1>{excursion.localized_title}</h1>
 

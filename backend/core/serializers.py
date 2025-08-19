@@ -6,7 +6,7 @@ from core.models import (
     Question, ContactInfo, AboutUs, TransferSchedule,
     Hotel, PickupPoint, TransferNotification, TransferInquiry,
     PrivacyPolicy, InfoMeetingScheduleItem, ExcursionContentBlock,
-    PageBanner, ExcursionImage, Question, TeamMember
+    PageBanner, ExcursionImage, Question, TeamMember, TransferPageContentBlock
     )
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -16,6 +16,8 @@ from .utils import BaseTranslationSerializer  # путь зависит от т�
 logger = logging.getLogger(__name__)
 # лид/трейл-очистка с учётом невидимых пробелов
 _TRIM_RE = re.compile(r'^[\s\u00A0\u200B\u200C\u200D\uFEFF]+|[\s\u00A0\u200B\u200C\u200D\uFEFF]+$')
+
+SUPPORTED_LANGS = ('ru','en','es','lt','lv','et','uk')
 
 class PageBannerSerializer(serializers.ModelSerializer):
     titles = serializers.SerializerMethodField()
@@ -174,6 +176,29 @@ class AirportTransferSerializer(BaseTranslationSerializer):
     class Meta:
         model = AirportTransfer
         extra_fields = ['departure_time', 'departure_date', 'contact_email']  # поправь по фактическим полям
+
+class TransferPageContentBlockSerializer(serializers.ModelSerializer):
+    title = serializers.SerializerMethodField()
+    content = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TransferPageContentBlock
+        fields = ('id', 'page', 'order', 'title', 'content')
+
+    def _lang(self):
+        req = self.context.get('request')
+        q = (req.query_params.get('lang') if req else None) or ''
+        h = (req.headers.get('Accept-Language') if req else '') or ''
+        lang = (q or h[:2] or 'ru').lower()
+        return lang if lang in SUPPORTED_LANGS else 'ru'
+
+    def get_title(self, obj):
+        lang = self._lang()
+        return getattr(obj, f'title_{lang}', '') or getattr(obj, 'title_ru', '')
+
+    def get_content(self, obj):
+        lang = self._lang()
+        return getattr(obj, f'content_{lang}', '') or getattr(obj, 'content_ru', '')
 
 class TransferScheduleRequestSerializer(serializers.Serializer):
     transfer_type = serializers.ChoiceField(choices=[('group', 'Group'), ('private', 'Private')])

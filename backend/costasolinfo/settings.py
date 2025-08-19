@@ -184,4 +184,26 @@ LOGGING = {
     'root': {'handlers': ['console'], 'level': 'DEBUG'},
 }
 
+# costasolinfo/settings.py
+CKEDITOR_CONFIGS = {
+    # общий "богатый" конфиг
+    "rich": {
+        "toolbar": "full",
+        "allowedContent": True,             # не вычищать стили/классы
+        "extraAllowedContent": "*(*);*{*}", # на всякий случай
+        "extraPlugins": ",".join([
+            "justify",      # выравнивание
+            "colorbutton",  # цвет текста
+            "font",         # шрифт/размер
+        ]),
+        "height": 300,
+    },
+    # безопасный дефолт (на случай где-то вызвали без config_name)
+    "default": {
+        "toolbar": "full",
+        "allowedContent": True,
+        "height": 300,
+    },
+}
+
 

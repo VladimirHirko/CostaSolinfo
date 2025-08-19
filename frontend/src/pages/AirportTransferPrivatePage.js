@@ -6,6 +6,9 @@ import DatePicker from 'react-datepicker';
 import TransferMap from '../components/TransferMap';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import 'react-datepicker/dist/react-datepicker.css';
+import TransferContent from '../components/TransferContent';
+import Breadcrumbs from "../components/Breadcrumbs";
+
 
 const AirportTransferPrivatePage = () => {
   const { t, i18n } = useTranslation();
@@ -352,117 +355,37 @@ const AirportTransferPrivatePage = () => {
 
 
   return (
-    <div className="page-container">
+    <>
       <PageBanner page="private_transfer" />
-      <h1>{t('private_transfer')}</h1>
-      <p>{t('enter_hotel_and_date')}</p>
+      
 
-      <form onSubmit={handleSubmit} className="transfer-form left-aligned">
-        <label>{t('enter_hotel')}</label>
-        <div className="autocomplete-wrapper">
-          <input
-            type="text"
-            value={hotel}
-            onChange={(e) => setHotel(e.target.value)}
-            placeholder={t('enter_hotel')}
-            className="transfer-input"
-          />
-          {hotelSuggestions.length > 0 && !hotelSuggestions.some(h => h.name === hotel) && (
-            <ul className="autocomplete-list">
-              {hotelSuggestions.map((item) => (
-                <li key={item.id} onMouseDown={() => handleSelectHotel(item.name, item.id)}>
-                  {item.name}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+      
+      <div className="page-container">
 
-        <label>{t('select_date')}</label>
-        <DatePicker
-          selected={date}
-          onChange={(date) => setDate(date)}
-          placeholderText={t('select_date')}
-          className="transfer-input"
-          dateFormat="yyyy-MM-dd"
-        />
-
-        <button
-          type="submit"
-          className="transfer-button"
-          style={{ alignSelf: "flex-start" }}
-        >
-          {t('show_transfer_time')}
-        </button>
-      </form>
-
-      {/* 🔹 Ошибка */}
-      {error && (
-        <div className="transfer-warning-box">
-          {error}
-        </div>
-      )}
-
-      {needLastName && (
-        <div className="transfer-form left-aligned" style={{ marginTop: '20px' }}>
-          <label htmlFor="lastNameInput">{t('enter_last_name')}</label>
-          <input
-            id="lastNameInput"
-            type="text"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            placeholder={t('your_last_name')}
-            className="transfer-input"
-          />
-          <button
-            onClick={handleSubmit}
-            className="transfer-button"
-            style={{ marginTop: '15px' }}
-          >
-            {t('find_my_transfer')}
-          </button>
-        </div>
-      )}
-
-      {error === 'No transfer found for this last name' && (
-        <div style={{ marginTop: '30px' }}>
-          <p>{t('not_found_contact_us')}</p>
-          <button
-            className="transfer-button"
-            onClick={() => setShowInquiryForm(true)}
-          >
-            {t('open_contact_form')}
-          </button>
-        </div>
-      )}
-
-      {showInquiryForm && (
-        <form
-          onSubmit={handleInquirySubmit}
-          className="transfer-form left-aligned inquiry-form-animated"
-          style={{ marginTop: '20px' }}
-        >
-          <label>{t('your_last_name')}</label>
-          <input
-            type="text"
-            value={inquiryLastName}
-            onChange={(e) => setInquiryLastName(e.target.value)}
-            className="transfer-input"
-          />
-
-          <label>{t('your_hotel')}</label>
+        <Breadcrumbs items={[
+          { to: "/", label: t("home") },
+          { to: "/airport-transfer", label: t("airport_transfer") },
+          { label: t("group_transfer") } // или t("private_transfer")
+        ]}/>
+        
+        <h1>{t('private_transfer')}</h1>
+        <p>{t('enter_hotel_and_date')}</p>
+        <TransferContent page="transfer_private" />
+        
+        <form onSubmit={handleSubmit} className="transfer-form left-aligned">
+          <label>{t('enter_hotel')}</label>
           <div className="autocomplete-wrapper">
             <input
               type="text"
-              value={inquiryHotel}
-              onChange={(e) => setInquiryHotel(e.target.value)}
-              placeholder={t('your_hotel')}
+              value={hotel}
+              onChange={(e) => setHotel(e.target.value)}
+              placeholder={t('enter_hotel')}
               className="transfer-input"
             />
-            {inquiryHotelSuggestions.length > 0 && !inquiryHotelSuggestions.some(h => h.name === inquiryHotel) && (
+            {hotelSuggestions.length > 0 && !hotelSuggestions.some(h => h.name === hotel) && (
               <ul className="autocomplete-list">
-                {inquiryHotelSuggestions.map((item) => (
-                  <li key={item.id} onMouseDown={() => handleSelectInquiryHotel(item.name, item.id)}>
+                {hotelSuggestions.map((item) => (
+                  <li key={item.id} onMouseDown={() => handleSelectHotel(item.name, item.id)}>
                     {item.name}
                   </li>
                 ))}
@@ -470,132 +393,225 @@ const AirportTransferPrivatePage = () => {
             )}
           </div>
 
-
-          <label>{t('departure_date')}</label>
+          <label>{t('select_date')}</label>
           <DatePicker
-            selected={inquiryDate}
-            onChange={(date) => setInquiryDate(date)}
+            selected={date}
+            onChange={(date) => setDate(date)}
             placeholderText={t('select_date')}
             className="transfer-input"
             dateFormat="yyyy-MM-dd"
           />
 
-          <label>{t('flight_number')}</label>
-          <input
-            type="text"
-            value={inquiryFlight}
-            onChange={(e) => setInquiryFlight(e.target.value)}
-            className="transfer-input"
-          />
-
-          <label>{t('question')}</label>
-          <textarea
-            value={inquiryMessage}
-            onChange={(e) => setInquiryMessage(e.target.value)}
-            className="transfer-input"
-          />
-
-          <label>{t('your_email')}</label>
-          <input
-            type="email"
-            value={inquiryEmail}
-            onChange={(e) => setInquiryEmail(e.target.value)}
-            className="transfer-input"
-          />
-
-          <button className="transfer-button" style={{ marginTop: '15px' }}>
-            {t('send_request')}
+          <button
+            type="submit"
+            className="transfer-button"
+            style={{ alignSelf: "flex-start" }}
+          >
+            {t('show_transfer_time')}
           </button>
         </form>
-      )}
 
-      {inquirySuccessMessage && !pickupTime && (
-        <div className="success-message-box">
-          {inquirySuccessMessage}
-        </div>
-      )}
+        {/* 🔹 Ошибка */}
+        {error && (
+          <div className="transfer-warning-box">
+            {error}
+          </div>
+        )}
 
+        {needLastName && (
+          <div className="transfer-form left-aligned" style={{ marginTop: '20px' }}>
+            <label htmlFor="lastNameInput">{t('enter_last_name')}</label>
+            <input
+              id="lastNameInput"
+              type="text"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              placeholder={t('your_last_name')}
+              className="transfer-input"
+            />
+            <button
+              onClick={handleSubmit}
+              className="transfer-button"
+              style={{ marginTop: '15px' }}
+            >
+              {t('find_my_transfer')}
+            </button>
+          </div>
+        )}
 
-      {pickupTime && (
-        <div className="transfer-result">
-          <h3>{t('pickup_time')}:</h3>
-          <p>{pickupTime}</p>
-          {pickupPoint && <p>{t('pickup_point')}: {pickupPoint}</p>}
+        {error === 'No transfer found for this last name' && (
+          <div style={{ marginTop: '30px' }}>
+            <p>{t('not_found_contact_us')}</p>
+            <button
+              className="transfer-button"
+              onClick={() => setShowInquiryForm(true)}
+            >
+              {t('open_contact_form')}
+            </button>
+          </div>
+        )}
 
-          {pickupCoords && (
-            <div style={{ height: '400px', marginTop: '20px' }}>
-              <TransferMap lat={pickupCoords.lat} lng={pickupCoords.lng} pickupName={pickupPoint} />
-            </div>
-          )}
+        {showInquiryForm && (
+          <form
+            onSubmit={handleInquirySubmit}
+            className="transfer-form left-aligned inquiry-form-animated"
+            style={{ marginTop: '20px' }}
+          >
+            <label>{t('your_last_name')}</label>
+            <input
+              type="text"
+              value={inquiryLastName}
+              onChange={(e) => setInquiryLastName(e.target.value)}
+              className="transfer-input"
+            />
 
-          {pickupTime && (
-            <div className="email-subscription" style={{ marginTop: '30px' }}>
-              <h3>{t('want_to_receive_email')}</h3>
-              <p>{t('email_info_text')}</p>
-
+            <label>{t('your_hotel')}</label>
+            <div className="autocomplete-wrapper">
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t('enter_email')}
+                type="text"
+                value={inquiryHotel}
+                onChange={(e) => setInquiryHotel(e.target.value)}
+                placeholder={t('your_hotel')}
                 className="transfer-input"
-                required
               />
-
-              <div style={{ marginTop: '10px' }}>
-                <input
-                  type="checkbox"
-                  checked={checkboxAccepted}
-                  onChange={(e) => setCheckboxAccepted(e.target.checked)}
-                  id="consent"
-                  onClick={(e) => e.stopPropagation()} // не даёт всплытию перейти к label
-                />
-                <label
-                  htmlFor="consent"
-                  style={{ marginLeft: '8px', cursor: 'pointer' }}
-                  onClick={() => setShowPolicyModal(true)}
-                >
-                  {t('i_agree_with')}{' '}
-                  <span style={{ color: 'blue', textDecoration: 'underline' }}>
-                    {t('terms_and_privacy')}
-                  </span>
-                </label>
-              </div>
-
-
-              <PrivacyPolicyModal
-                isOpen={showPolicyModal}
-                onClose={() => setShowPolicyModal(false)}
-              />
-
-              <button
-                onClick={handleEmailSubmit}
-                className="transfer-button"
-                style={{
-                  marginTop: '15px',
-                  backgroundColor: (!checkboxAccepted || !isValidEmail(email)) ? '#ccc' : '#00aaff',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '6px',
-                  fontSize: '16px',
-                  cursor: (!checkboxAccepted || !isValidEmail(email)) ? 'not-allowed' : 'pointer',
-                  transition: '0.3s ease',
-                }}
-                disabled={!checkboxAccepted || !isValidEmail(email)}
-              >
-                {t('send_to_email')}
-              </button>
-
-
-              {emailSentMessage && (
-                <p style={{ marginTop: '10px', color: 'green' }}>{emailSentMessage}</p>
+              {inquiryHotelSuggestions.length > 0 && !inquiryHotelSuggestions.some(h => h.name === inquiryHotel) && (
+                <ul className="autocomplete-list">
+                  {inquiryHotelSuggestions.map((item) => (
+                    <li key={item.id} onMouseDown={() => handleSelectInquiryHotel(item.name, item.id)}>
+                      {item.name}
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
-          )}
-        </div>
-      )}
-    </div>
+
+
+            <label>{t('departure_date')}</label>
+            <DatePicker
+              selected={inquiryDate}
+              onChange={(date) => setInquiryDate(date)}
+              placeholderText={t('select_date')}
+              className="transfer-input"
+              dateFormat="yyyy-MM-dd"
+            />
+
+            <label>{t('flight_number')}</label>
+            <input
+              type="text"
+              value={inquiryFlight}
+              onChange={(e) => setInquiryFlight(e.target.value)}
+              className="transfer-input"
+            />
+
+            <label>{t('question')}</label>
+            <textarea
+              value={inquiryMessage}
+              onChange={(e) => setInquiryMessage(e.target.value)}
+              className="transfer-input"
+            />
+
+            <label>{t('your_email')}</label>
+            <input
+              type="email"
+              value={inquiryEmail}
+              onChange={(e) => setInquiryEmail(e.target.value)}
+              className="transfer-input"
+            />
+
+            <button className="transfer-button" style={{ marginTop: '15px' }}>
+              {t('send_request')}
+            </button>
+          </form>
+        )}
+
+        {inquirySuccessMessage && !pickupTime && (
+          <div className="success-message-box">
+            {inquirySuccessMessage}
+          </div>
+        )}
+
+
+        {pickupTime && (
+          <div className="transfer-result">
+            <h3>{t('pickup_time')}:</h3>
+            <p>{pickupTime}</p>
+            {pickupPoint && <p>{t('pickup_point')}: {pickupPoint}</p>}
+
+            {pickupCoords && (
+              <div style={{ height: '400px', marginTop: '20px' }}>
+                <TransferMap lat={pickupCoords.lat} lng={pickupCoords.lng} pickupName={pickupPoint} />
+              </div>
+            )}
+
+            {pickupTime && (
+              <div className="email-subscription" style={{ marginTop: '30px' }}>
+                <h3>{t('want_to_receive_email')}</h3>
+                <p>{t('email_info_text')}</p>
+
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t('enter_email')}
+                  className="transfer-input"
+                  required
+                />
+
+                <div style={{ marginTop: '10px' }}>
+                  <input
+                    type="checkbox"
+                    checked={checkboxAccepted}
+                    onChange={(e) => setCheckboxAccepted(e.target.checked)}
+                    id="consent"
+                    onClick={(e) => e.stopPropagation()} // не даёт всплытию перейти к label
+                  />
+                  <label
+                    htmlFor="consent"
+                    style={{ marginLeft: '8px', cursor: 'pointer' }}
+                    onClick={() => setShowPolicyModal(true)}
+                  >
+                    {t('i_agree_with')}{' '}
+                    <span style={{ color: 'blue', textDecoration: 'underline' }}>
+                      {t('terms_and_privacy')}
+                    </span>
+                  </label>
+                </div>
+
+
+                <PrivacyPolicyModal
+                  isOpen={showPolicyModal}
+                  onClose={() => setShowPolicyModal(false)}
+                />
+
+                <button
+                  onClick={handleEmailSubmit}
+                  className="transfer-button"
+                  style={{
+                    marginTop: '15px',
+                    backgroundColor: (!checkboxAccepted || !isValidEmail(email)) ? '#ccc' : '#00aaff',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '6px',
+                    fontSize: '16px',
+                    cursor: (!checkboxAccepted || !isValidEmail(email)) ? 'not-allowed' : 'pointer',
+                    transition: '0.3s ease',
+                  }}
+                  disabled={!checkboxAccepted || !isValidEmail(email)}
+                >
+                  {t('send_to_email')}
+                </button>
+
+
+                {emailSentMessage && (
+                  <p style={{ marginTop: '10px', color: 'green' }}>{emailSentMessage}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 

@@ -12,7 +12,8 @@ from core.views import (
     available_hotels_for_transfer, TransferNotificationViewSet, TransferInquiryViewSet,
     confirm_transfer_notification, PrivacyPolicyView, info_meeting_schedule,
     ExcursionListView, PageBannerView, ExcursionDetailView, pickup_point_detail,
-    excursion_pickup_view, QuestionCreateAPIView, TeamMemberListAPIView
+    excursion_pickup_view, QuestionCreateAPIView, TeamMemberListAPIView,
+    TransferContentListAPIView
 )
 
 transfer_notification_view = TransferNotificationViewSet.as_view({'post': 'create'})
@@ -35,6 +36,7 @@ urlpatterns = [
     path('api/info-meeting/', InfoMeetingView.as_view(), name='info-meeting'),
     path('api/info-meetings/', info_meeting_schedule, name='info-meeting-schedule'),
     path('api/airport-transfer/', AirportTransferView.as_view(), name='airport-transfer'),
+    path('api/transfer-content/<slug:page>/', TransferContentListAPIView.as_view(), name='transfer-content'),
     path('api/transfer-info/', transfer_info, name='transfer_info'),
     path('api/transfer-schedule/', transfer_schedule_view, name='transfer_schedule'),
     path('api/transfer-notifications/', transfer_notification_view, name='transfer-notification'),
