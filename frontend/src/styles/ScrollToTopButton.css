@@ -1,8 +1,10 @@
+/* ===== Scroll To Top Button ===== */
+
 .scroll-to-top {
   position: fixed;
   bottom: 25px;
   right: 25px;
-  background: #0056b3;
+  background: #0057A3;
   color: white;
   border: none;
   border-radius: 50%;
@@ -13,22 +15,56 @@
   justify-content: center;
   align-items: center;
   cursor: pointer;
-  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
   z-index: 1000;
-  
+
   opacity: 0;
   pointer-events: none;
+  transform: translateY(20px); /* 🔹 скрыта ниже */
 
-  /* Объединили все transition в одном месте */
-  transition: background 0.3s, transform 0.3s, opacity 0.5s ease-in-out;
+  transition: background 0.3s,
+              transform 0.35s ease,
+              opacity 0.5s ease-in-out;
 }
 
-.scroll-to-top:hover {
-  background: #007bff;
-  transform: scale(1.15); /* можно чуть больше, чем 1.1 */
-}
-
+/* Появление */
 .scroll-to-top.show {
   opacity: 1;
   pointer-events: auto;
+  transform: translateY(0); /* 🔹 плавный выезд вверх */
+}
+
+/* Hover */
+.scroll-to-top:hover {
+  background: #007bff;
+  transform: scale(1.15) rotate(-5deg);
+}
+
+/* Active */
+.scroll-to-top:active {
+  transform: scale(1.05);
+}
+
+/* Focus */
+.scroll-to-top:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* 📱 Mobile */
+@media (max-width: 600px) {
+  .scroll-to-top {
+    width: 42px;
+    height: 42px;
+    font-size: 18px;
+    bottom: 18px;
+    right: 18px;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .scroll-to-top {
+    transition: none;
+  }
 }

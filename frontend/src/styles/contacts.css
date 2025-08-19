@@ -2,7 +2,7 @@
 .contacts-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
+  gap: clamp(12px, 2.5vw, 18px);
   margin: 26px 0 18px;
 }
 
@@ -11,6 +11,7 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* брейкпоинты */
 @media (max-width: 1200px) {
   .contacts-grid,
   .contacts-grid-compact { grid-template-columns: repeat(3, 1fr); }
@@ -29,8 +30,8 @@
   background: #fff;
   border: 1px solid rgba(0,0,0,0.06);
   border-radius: 16px;
-  padding: 16px 18px;
-  min-height: 132px; /* одинаковая высота */
+  padding: clamp(14px, 2.6vw, 18px);
+  min-height: 132px;                /* одинаковая высота на десктопе */
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -38,30 +39,38 @@
   transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
 }
 
-.contact-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 14px 28px rgba(0,0,0,0.08);
-  border-color: rgba(0,0,0,0.1);
+@media (max-width: 560px) {
+  .contact-card { min-height: auto; } /* на мобилках карточка растягивается по контенту */
+}
+
+/* hover только на устройствах с hover */
+@media (hover: hover) {
+  .contact-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 28px rgba(0,0,0,0.08);
+    border-color: rgba(0,0,0,0.1);
+  }
 }
 
 /* ====== CARD как ссылка (минималистичный вид) ====== */
 .link-card {
   text-decoration: none;
   color: inherit;
-  align-items: center;   /* центрируем содержимое */
+  align-items: center;
   justify-content: center;
   min-height: 110px;
-  padding: 18px;
+  padding: clamp(14px, 3vw, 18px);
 }
 
 .link-card .cc-header { justify-content: center; }
-.link-card .cc-title { font-size: 1.06rem; font-weight: 700; }
+.link-card .cc-title { font-size: clamp(1rem, 1.2vw, 1.06rem); font-weight: 700; }
 
-/* чуть эффектнее hover для кликабельных карточек */
-.link-card:hover {
-  transform: translateY(-4px) scale(1.01);
-  box-shadow: 0 16px 30px rgba(0,0,0,0.09);
-  border-color: rgba(0,0,0,0.12);
+@media (hover: hover) {
+  .link-card:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 16px 30px rgba(0,0,0,0.09);
+    border-color: rgba(0,0,0,0.12);
+  }
 }
 
 /* ====== HEADER (icon + title) ====== */
@@ -72,13 +81,13 @@
 }
 
 .cc-icon {
-  width: 44px;              /* больше для карточек-ссылок */
+  width: 44px;
   height: 44px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, rgba(0,170,255,.12), rgba(0,200,160,.12));
-  color: #0b7cc2; /* акцент в тон баннеру */
+  background: linear-gradient(135deg, rgba(0,87,163,.12), rgba(0,87,163,.06)); /* в фирменном тоне */
+  color: #0057A3;
   flex: 0 0 44px;
 }
 .cc-icon svg { width: 22px; height: 22px; }
@@ -87,20 +96,26 @@
   margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
+  line-height: 1.3;
 }
 
-/* ====== TEXT & LINKS (оставляем для не-минимал карточек) ====== */
+/* ====== TEXT & LINKS ====== */
 .cc-text { margin: 0; line-height: 1.55; }
 
 .primary-link {
-  color: #0b7cc2;
+  color: #0057A3;                           /* фирменный синий */
   font-weight: 600;
   text-decoration: none;
-  border-bottom: 1px dashed rgba(11,124,194,.4);
+  border-bottom: 1px dashed rgba(0,87,163,.4);
   padding-bottom: 1px;
+  transition: border-color .15s ease, color .15s ease;
 }
 .primary-link:hover { border-bottom-color: transparent; }
+.primary-link:focus-visible {
+  outline: 2px solid #0057A3; outline-offset: 2px; border-bottom-color: transparent;
+}
 
+/* ====== SOCIAL LINKS ====== */
 .social-links {
   display: flex;
   gap: 12px;
@@ -112,11 +127,18 @@
   background: #f6faff;
   text-decoration: none;
   border: 1px solid rgba(0,0,0,0.06);
-  transition: background .15s ease, border-color .15s ease;
+  transition: background .15s ease, border-color .15s ease, transform .05s ease;
+  color: #0057A3;
 }
-.social-links a:hover {
-  background: #eef6ff;
-  border-color: rgba(0,0,0,0.1);
+@media (hover: hover) {
+  .social-links a:hover {
+    background: #eef6ff;
+    border-color: rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+  }
+}
+.social-links a:focus-visible {
+  outline: 2px solid #0057A3; outline-offset: 2px;
 }
 
 /* ====== UTIL ====== */
@@ -128,7 +150,7 @@
   background: #fff; 
   border: 1px solid rgba(0,0,0,0.06);
   border-radius: 16px; 
-  padding: 18px; 
+  padding: clamp(16px, 3vw, 18px);
   box-shadow: 0 8px 22px rgba(0,0,0,0.05);
   margin: 22px 0 32px;
 }
@@ -137,13 +159,13 @@
   margin: 0 0 12px 0;
 }
 
+/* две колонки → мобилке в одну */
 .contact-form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;   /* две колонки */
-  gap: 14px 16px;                   /* вертикальный/горизонтальный шаг */
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 16px;
 }
 
-/* поле, растягивающееся на всю ширину */
 .form-field--full {
   grid-column: 1 / -1;
 }
@@ -163,16 +185,21 @@
 
 /* блок с кнопкой */
 .form-actions {
-  grid-column: 1 / -1;             /* кнопка под всей формой */
+  grid-column: 1 / -1;
   margin-top: 4px;
 }
 
-/* адаптив */
+/* адаптив формы */
 @media (max-width: 760px) {
   .contact-form-grid {
-    grid-template-columns: 1fr;     /* одна колонка на мобилках */
+    grid-template-columns: 1fr;
   }
-  .form-actions {
-    margin-top: 2px;
-  }
+  .form-actions { margin-top: 2px; }
+}
+
+/* пользователи с отключённой анимацией */
+@media (prefers-reduced-motion: reduce) {
+  .contact-card,
+  .link-card,
+  .social-links a { transition: none; }
 }

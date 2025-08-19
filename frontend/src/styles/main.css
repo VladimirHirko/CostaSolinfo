@@ -1,3 +1,11 @@
+:root{
+  --csi-primary:#0057A3;
+  --csi-primary-600:#004a8b;
+  --csi-accent:#ffc400;
+  --csi-ink:#1f2937;
+  --csi-muted:#6b7280;
+}
+
 /* ========== ГЛОБАЛЬНЫЕ СТИЛИ ========== */
 body {
   margin: 0;
@@ -246,4 +254,130 @@ body {
     font-size: 14px;
     padding: 8px;
   }
+}
+
+
+/* ==== АДАПТИВНЫЕ ОВЕРРАЙДЫ ==== */
+
+/* 0) Единая анимация (оставь только один fadeIn в файле) */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 1) Кнопки выбора типа трансфера — флюидные + фирменный синий */
+.transfer-buttons {
+  gap: clamp(12px, 3vw, 20px);
+}
+
+.transfer-button {
+  /* цвет в стиле CostaSolinfo */
+  background-color: #0057A3 !important;
+  transition: background-color .25s ease, transform .05s ease;
+  padding: clamp(10px, 2.8vw, 12px) clamp(16px, 4.2vw, 24px);
+  font-size: clamp(14px, 1.8vw, 16px);
+  min-width: unset;        /* снимаем жёсткую ширину */
+  width: min(100%, 360px); /* аккуратная ширина на мобилках */
+}
+
+.transfer-button:hover { background-color: #004a8b !important; }
+.transfer-button:active { transform: translateY(1px); }
+
+/* 2) Формы трансферов — без жёстких min-width */
+.transfer-form { gap: clamp(10px, 2.2vw, 15px); }
+
+.transfer-form.left-aligned {
+  align-items: stretch;
+  max-width: 560px;
+  min-width: 0;            /* <— убираем блокирующее сжатие */
+  width: 100%;
+  margin-top: 24px;
+}
+
+/* Поля ввода — флюидные */
+.transfer-input,
+.info-meeting-select {
+  width: 100%;
+  max-width: 420px;        /* ограничитель на десктопе */
+  padding: clamp(10px, 2.5vw, 12px);
+  font-size: clamp(14px, 1.8vw, 16px);
+}
+
+/* 3) Автокомплит — растягиваем и улучшаем тач‑таргеты */
+.autocomplete-wrapper {
+  width: 100%;
+  max-width: 560px;        /* как форма */
+}
+
+.autocomplete-list {
+  width: 100%;
+  z-index: 1000;           /* поверх прочего UI */
+  max-height: 240px;
+}
+
+.autocomplete-list li {
+  padding: clamp(10px, 2.6vw, 14px);
+}
+
+/* 4) Боксы предупреждений/успеха — флюидные */
+.transfer-warning-box,
+.success-message-box {
+  width: 100%;
+  max-width: 720px;
+  margin: 16px auto;
+  font-size: clamp(14px, 2vw, 16px);
+}
+
+/* 5) Info‑meeting форма — флюидная */
+.info-meeting-form {
+  align-items: stretch;
+  max-width: 560px;
+  min-width: 0;
+  width: 100%;
+  padding-inline: 0;
+}
+
+/* 6) Таблица расписаний — безопасный скролл на узких экранах */
+.schedule-table {
+  width: 100%;
+  margin: 24px auto;
+  font-size: clamp(14px, 2vw, 16px);
+}
+
+@media (max-width: 600px) {
+  /* кладём таблицу в горизонтальный скролл, чтобы ничего не ломать разметкой */
+  .schedule-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .schedule-table thead,
+  .schedule-table tbody,
+  .schedule-table tr,
+  .schedule-table th,
+  .schedule-table td {
+    white-space: nowrap;
+  }
+}
+
+/* 7) Общие мобильные улучшения */
+@media (max-width: 768px) {
+  .transfer-buttons { justify-content: center; }
+  .transfer-result { font-size: 16px; }
+  .welcome-text { font-size: 15px; }
+}
+
+@media (max-width: 480px) {
+  .page { padding: 6px 0; }
+  .transfer-button { width: 100%; }  /* полноразмерная кнопка */
+  .transfer-form { margin-top: 20px; }
+  .transfer-form.left-aligned { margin-top: 20px; }
+}
+
+
+@media print {
+  nav, .navbar, .footer, .page-banner, .cookie-banner, .csi-cookie-overlay { display:none !important; }
+  .main-container, .page-container { padding:0 !important; box-shadow:none !important; }
+  a[href]:after{ content:" (" attr(href) ")"; font-size:0.85em; color:#555; }
 }

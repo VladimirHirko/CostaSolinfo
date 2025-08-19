@@ -1,7 +1,86 @@
-.breadcrumbs { margin: 8px 0 16px; }
-.breadcrumbs ol { list-style: none; padding: 0; margin: 0; display: flex; gap: 8px; flex-wrap: wrap; }
-.breadcrumbs li { font-size: 14px; opacity: .8; }
-.breadcrumbs li:not(.current)::after { content: "›"; margin-left: 8px; opacity: .5; }
-.breadcrumbs a { text-decoration: none; border-bottom: 1px dotted transparent; }
-.breadcrumbs a:hover { border-bottom-color: currentColor; }
-.breadcrumbs .current { font-weight: 600; opacity: 1; }
+/* ===== Breadcrumbs ===== */
+.breadcrumbs {
+  margin: clamp(6px, 2vw, 16px) 0;
+  font-size: clamp(13px, 1.6vw, 14px);
+  color: #444;
+}
+
+/* контейнер-лента, чтобы на узких экранах можно было скроллить по горизонтали */
+.breadcrumbs ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: clamp(6px, 1.6vw, 8px);
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .breadcrumbs ol {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .breadcrumbs ol::-webkit-scrollbar { height: 6px; }
+  .breadcrumbs ol::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 4px; }
+}
+
+.breadcrumbs li {
+  display: inline-flex;
+  align-items: center;
+  opacity: .85;
+  white-space: nowrap;
+  max-width: 50vw;                 /* предотвращаем «выталкивание» макета длинными названиями */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.breadcrumbs li.current {
+  font-weight: 600;
+  opacity: 1;
+}
+
+/* разделитель */
+.breadcrumbs li:not(.current)::after {
+  content: "›";
+  margin: 0 clamp(4px, 1vw, 8px);
+  opacity: .5;
+}
+
+/* RTL поддержка: переворачиваем разделитель */
+:root:dir(rtl) .breadcrumbs li:not(.current)::after {
+  content: "‹";
+}
+
+/* ссылки */
+.breadcrumbs a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dotted transparent;
+  transition: border-color .2s ease, color .2s ease;
+}
+
+.breadcrumbs a:hover {
+  border-bottom-color: currentColor;
+}
+
+/* доступность: видимый фокус при таб-навигации */
+.breadcrumbs a:focus-visible {
+  outline: 2px solid #0057A3;
+  outline-offset: 2px;
+  border-bottom-color: transparent;
+}
+
+/* high-contrast/темная тема (если будет) */
+@media (prefers-color-scheme: dark) {
+  .breadcrumbs { color: #e5e7eb; }
+  .breadcrumbs a:focus-visible { outline-color: #73b0ff; }
+  .breadcrumbs ol::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); }
+}
+
+/* длинные цепочки: слегка «приглушаем» средние элементы, крайние — ярче */
+.breadcrumbs li:first-child,
+.breadcrumbs li.current {
+  opacity: 1;
+}

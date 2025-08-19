@@ -1,250 +1,225 @@
+/* ===== Контейнер и базовая типографика ===== */
 .excursion-detail-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px;
-  text-align: left; /* ✅ текст привязан к левому краю контейнера */
+  padding: clamp(14px, 3.5vw, 20px);
+  text-align: left;
 }
 
 .excursion-description {
-  font-size: 1rem;
-  line-height: 1.6;
-  margin: 20px 0;
+  font-size: clamp(15px, 1.9vw, 16px);
+  line-height: 1.65;
+  margin: clamp(14px, 3vw, 20px) 0;
 }
 
-.excursion-block {
-  margin-bottom: 20px;
-}
+.excursion-block { margin-bottom: clamp(14px, 3vw, 20px); }
 
-.excursion-gallery-container {
-  position: relative;
-}
+/* ===== Галерея (лента с прокруткой) ===== */
+.excursion-gallery-container { position: relative; }
 
 .excursion-gallery {
   display: flex;
   overflow-x: auto;
-  gap: 15px;
+  gap: clamp(10px, 2.5vw, 15px);
   padding: 10px;
   scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
+.excursion-gallery::-webkit-scrollbar { height: 8px; }
+.excursion-gallery::-webkit-scrollbar-thumb { background: rgba(0,0,0,.18); border-radius: 4px; }
 
 .excursion-gallery img {
   flex: 0 0 auto;
-  width: 280px;
-  height: 200px;
+  width: clamp(220px, 48vw, 280px);
+  height: clamp(150px, 32vw, 200px);
   object-fit: cover;
   border-radius: 12px;
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  transition: transform 0.3s ease;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+  transition: transform .25s ease;
 }
 
-.excursion-gallery img:hover {
-  transform: scale(1.05);
+@media (hover: hover) {
+  .excursion-gallery img:hover { transform: scale(1.05); }
 }
 
-/* Стрелки */
+/* ===== Стрелки галереи ===== */
 .gallery-arrow {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 2.5rem;
+  font-size: clamp(28px, 4.2vw, 40px);
   color: #333;
-  background: transparent;
-  border: none;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 12px;
   cursor: pointer;
-  z-index: 10;
-  transition: all 0.3s ease;
+  z-index: 2;
+  transition: transform .2s ease, color .2s ease, background .2s ease;
+  padding: 6px 10px;
+  line-height: 1;
 }
-
-.gallery-arrow:hover {
-  color: #007bff; /* красивый акцентный цвет */
-  transform: translateY(-50%) scale(1.2);
+@media (hover: hover) {
+  .gallery-arrow:hover {
+    color: #0057A3;
+    transform: translateY(-50%) scale(1.06);
+    background: rgba(255,255,255,0.95);
+  }
 }
+.gallery-arrow.left  { left: -28px; }
+.gallery-arrow.right { right: -28px; }
 
-.gallery-arrow.left {
-  left: -40px; /* чуть вынесли за пределы */
-}
-
-.gallery-arrow.right {
-  right: -40px;
-}
-
-/* Мобильные устройства */
 @media (max-width: 768px) {
-  .gallery-arrow {
-    font-size: 1.8rem;
-    padding: 8px;
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .gallery-container.show-arrows .gallery-arrow {
-    opacity: 1;
-    pointer-events: auto;
-  }
-  
-  .gallery-arrow.left {
-    left: 5px;
-  }
-  .gallery-arrow.right {
-    right: 5px;
-  }
+  /* На мобилках делаем стрелки внутри контейнера и скрываем по умолчанию */
+  .gallery-arrow { opacity: 0; pointer-events: none; left: 6px; right: 6px; }
+  .gallery-arrow.left { left: 6px; }
+  .gallery-arrow.right { right: 6px; }
+  .gallery-container.show-arrows .gallery-arrow { opacity: 1; pointer-events: auto; }
 }
 
-/* Модальное окно */
+/* ===== Модальное окно (fullscreen) ===== */
 .modal {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: rgba(0,0,0,0.8);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 9999;
+  display: grid;
+  place-items: center;
+  z-index: 11000; /* выше cookie/прочих оверлеев */
 }
-
 .modal img {
-  max-width: 90%;
-  max-height: 80%;
+  max-width: min(92vw, 1200px);
+  max-height: 82vh;
   border-radius: 10px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.35);
 }
 
 .modal .close-btn {
   position: absolute;
-  top: 20px;
-  right: 30px;
+  top: 16px;
+  right: 20px;
   font-size: 2rem;
-  color: white;
+  color: #fff;
   cursor: pointer;
+  background: transparent;
+  border: 0;
+  line-height: 1;
 }
 
 .modal .modal-arrow {
   position: absolute;
   top: 50%;
-  font-size: 3rem;
-  color: white;
-  cursor: pointer;
   transform: translateY(-50%);
+  font-size: clamp(34px, 5vw, 48px);
+  color: #fff;
+  cursor: pointer;
+  background: rgba(0,0,0,.25);
+  border-radius: 12px;
+  padding: 6px 10px;
+}
+.modal .modal-arrow.left  { left: 10px; }
+.modal .modal-arrow.right { right: 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .excursion-gallery img,
+  .gallery-arrow { transition: none; }
 }
 
-.modal .modal-arrow.left {
-  left: 20px;
-}
-
-.modal .modal-arrow.right {
-  right: 20px;
-}
-
-
-
-
-
-.hotel-select {
-  margin: 20px 0;
-}
+/* ===== Блок выбора отеля/кнопки ===== */
+.hotel-select { margin: 20px 0; }
 
 .book-button {
-  background-color: #0077cc;
-  color: white;
+  background-color: #0057A3;
+  color: #fff;
   padding: 10px 20px;
   border-radius: 8px;
   font-size: 1rem;
   cursor: pointer;
   border: none;
-  text-decoration: none; /* убираем подчеркивание */
+  text-decoration: none;
+  transition: background-color .2s ease, transform .05s ease;
 }
+.book-button:hover { background-color: #004a8b; }
+.book-button:active { transform: translateY(1px); }
 
-.book-button:hover {
-  background-color: #005fa3;
-}
-
+/* подпись к инпуту */
 .hotel-label {
   display: block;
-  font-weight: bold;
+  font-weight: 700;
   font-size: 18px;
-  margin-bottom: 8px; /* отступ между текстом и полем */
+  margin-bottom: 8px;
   color: #333;
 }
 
+/* автокомплит отелей */
 .hotel-select {
   margin: 20px 0;
   position: relative;
-  max-width: 400px;
+  max-width: min(100%, 480px);
 }
-
 .hotel-select input {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   border: 1px solid #ccc;
   border-radius: 8px;
+  font-size: 16px;
+  box-sizing: border-box;
 }
-
 .hotel-select ul {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 6px 0 0;
   border: 1px solid #ccc;
   border-radius: 8px;
-  max-height: 200px;
+  max-height: 240px;
   overflow-y: auto;
   position: absolute;
-  width: 100%;
-  background: white;
-  z-index: 9999; /* поверх карты */
+  inset-inline: 0;
+  background: #fff;
+  z-index: 12000; /* поверх карты и контента */
+  box-shadow: 0 8px 22px rgba(0,0,0,.1);
 }
-
 .hotel-select li {
-  padding: 8px 10px;
+  padding: 10px 12px;
   cursor: pointer;
   border-bottom: 1px solid #eee;
 }
+.hotel-select li:hover { background-color: #f5f7fa; }
 
-.hotel-select li:hover {
-  background-color: #f0f0f0;
-}
-
+/* ===== Кнопка Google Maps и блоки информации ===== */
 .google-maps-button-container {
-  margin-top: 15px;     /* больше отступ сверху */
-  text-align: left;     /* выравнивание по левому краю */
-  position: relative;   /* чтобы не залезала под карту */
-  z-index: 10;          /* выше карты */
+  margin-top: 15px;
+  text-align: left;
+  position: relative;
+  z-index: 10;
 }
 
-.pickup-section {
-  margin-top: 25px;
-}
+.pickup-section { margin-top: 25px; }
 
 .pickup-details {
-  margin-bottom: 15px;
-  text-align: left;
-  font-size: 18px;
-}
-
-.pickup-time {
-  font-weight: bold;
-  font-size: 20px;
-  color: red; /* выделим время */
   margin-bottom: 10px;
+  text-align: left;
+  font-size: clamp(16px, 2vw, 18px);
+}
+.pickup-time {
+  font-weight: 700;
+  font-size: clamp(18px, 2.4vw, 20px);
+  color: #d93025; /* заметный красный, менее «ядовитый» чем чистый red */
+  margin-bottom: 8px;
 }
 
-.excursion-prices {
-  font-size: 18px;
-}
-
+/* ===== Цены / пометки ===== */
+.excursion-prices { font-size: clamp(16px, 2vw, 18px); }
 .excursion-prices .price-adult {
-  font-weight: bold;
-  color: #007bff; /* синий для взрослых */
+  font-weight: 700;
+  color: #0057A3;
   margin: 5px 0;
 }
-
 .excursion-prices .price-child {
-  font-weight: bold;
-  color: #ff9800; /* оранжевый для детей */
+  font-weight: 700;
+  color: #ff9800;
   margin: 5px 0;
 }
-
 .child-note {
   font-size: 14px;
   color: #666;
@@ -252,48 +227,50 @@
   font-style: italic;
 }
 
-.pickup-title {
-  text-align: center;
-  font-size: 22px;
-  font-weight: bold;
-  margin: 15px 0;
-}
-
+/* ===== Секция выбора отеля (блок) ===== */
 .hotel-select-block {
   background: #f0f8ff;
-  padding: 25px;
+  padding: clamp(18px, 4vw, 25px);
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  margin: 40px auto;
-  max-width: 650px;
+  margin: clamp(20px, 5vw, 40px) auto;
+  max-width: 700px;
   text-align: center;
 }
-
 .hotel-title {
-  font-size: 22px;
-  font-weight: bold;
-  color: #0056b3;
+  font-size: clamp(18px, 2.6vw, 22px);
+  font-weight: 700;
+  color: #0057A3;
   margin-bottom: 10px;
 }
-
 .hotel-instruction {
-  font-size: 16px;
+  font-size: clamp(14px, 2.2vw, 16px);
   color: #333;
-  margin-bottom: 15px;
+  margin-bottom: 14px;
 }
 
+/* Поле отеля (id=hotel-input) — подчистим палитру под бренд */
 #hotel-input {
   width: 100%;
   padding: 12px;
   font-size: 16px;
-  border: 2px solid #007bff;
+  border: 2px solid #0057A3;
   border-radius: 8px;
-  transition: box-shadow 0.3s, border-color 0.3s;
+  box-sizing: border-box;
+  transition: box-shadow .2s, border-color .2s;
 }
-
 #hotel-input:focus {
-  border-color: #28a745;
-  box-shadow: 0 0 10px rgba(40,167,69,0.3);
+  border-color: #28a745; /* зелёный акцент при фокусе допустим */
+  box-shadow: 0 0 10px rgba(40,167,69,0.25);
   outline: none;
 }
 
+/* ===== Мелкие уточнения для мобильных ===== */
+@media (max-width: 600px) {
+  .pickup-title {
+    font-size: 20px;
+    margin: 12px 0;
+  }
+  .google-maps-button-container { text-align: center; }
+  .hotel-select { max-width: 100%; }
+}

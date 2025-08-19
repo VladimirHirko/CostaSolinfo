@@ -1,49 +1,56 @@
-/* === Основной контейнер навигации === */
+/* === NAVBAR (CostaSolinfo) === */
+:root{
+  --csi-blue:#0057A3;
+  --csi-blue-600:#004a8b;
+  --csi-blue-050:#eaf4fc;
+  --csi-border:#ddd;
+  --csi-ink:#333;
+}
+
+/* Основной контейнер навигации */
 .navbar {
   background-color: #f8f9fa;
   padding: 10px 20px;
-  border-bottom: 1px solid #ddd;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--csi-border);
+  box-shadow: 0 2px 4px rgba(0,0,0,.05);
 }
 
-/* Контейнер для логотипа, меню и языка */
+/* Внутренний флекс: логотип + контролы (бургер/язык) */
 .navbar-brand {
   display: flex;
   justify-content: space-between;
   align-items: center;
   max-width: 1200px;
   margin: 0 auto;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
-/* Левая часть: логотип */
+/* Логотип (текстовый) */
 .brand-logo {
-  font-size: 20px;
+  font-size: clamp(18px, 2.2vw, 20px);
   font-weight: bold;
-  color: #333;
+  color: var(--csi-ink);
 }
 
-/* Правая часть: бургер + язык */
+/* Контролы справа (бургер + язык) */
 .navbar-controls {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-/* Контейнер логотипа */
+/* Блок логотипа (изображение) */
 .navbar-logo-link {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 200px;
   height: 100px;
-  background-color: transparent; /* ← заменено */
-  border-radius: 0;              /* ← убрано скругление */
+  background: transparent;
+  border-radius: 0;
   padding: 0;
 }
-
-
-/* Сам логотип внутри */
 .navbar-logo {
   height: auto;
   width: 100%;
@@ -53,78 +60,63 @@
   display: block;
 }
 
-
-
 @media (max-width: 768px) {
-  .navbar-logo-link {
-    width: 250px;
-    height: 100px;
-  }
+  .navbar-logo-link { width: 220px; height: 90px; }
 }
 
 /* Бургер-меню */
 .burger {
-  font-size: 24px;
+  font-size: 26px;
+  line-height: 1;
   background: none;
   border: none;
   cursor: pointer;
-  display: none;
+  display: none;             /* показываем только на мобилках */
+  padding: 8px 10px;         /* тач-таргет */
+  border-radius: 8px;
 }
+.burger:hover { background: rgba(0,0,0,.04); }
+.burger:focus-visible { outline: 2px solid var(--csi-blue); outline-offset: 2px; }
 
-/* Обёртка языка */
+/* Языковой селектор */
 .lang-wrapper {
   display: flex;
   align-items: center;
   gap: 8px;
   position: relative;
-  transition: transform 0.3s ease;
 }
 
-/* Иконка 🌐 */
 .lang-label {
   font-size: 18px;
-  color: #007BFF;
-  transition: transform 0.3s ease;
+  color: var(--csi-blue);
 }
 
-/* Выпадающий язык */
 .lang-selector {
   border: 1px solid #ccc;
   border-radius: 8px;
-  padding: 6px 10px;
+  padding: 6px 28px 6px 10px;
   font-size: 14px;
-  background-color: white;
+  background-color: #fff;
+  color: #222;
   cursor: pointer;
   appearance: none;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
-/* Синий фокус при выборе */
-.lang-selector:focus {
-  outline: none;
-  border: 2px solid #007BFF;
-  box-shadow: 0 0 6px rgba(0, 123, 255, 0.3);
-  transform: scale(1.03);
-}
-
-/* Добавим стрелку ▼ к селектору */
-.lang-selector {
+  transition: border-color .2s ease, box-shadow .2s ease, transform .1s ease;
   background-image: url("data:image/svg+xml;utf8,<svg fill='black' height='12' viewBox='0 0 24 24' width='12' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 12px;
-  padding-right: 25px;
 }
-
+.lang-selector:focus {
+  outline: none;
+  border: 2px solid var(--csi-blue);
+  box-shadow: 0 0 6px rgba(0,87,163,.3);
+  transform: scale(1.02);
+}
 @media (max-width: 768px) {
-  .lang-selector {
-    width: 100%;
-    margin-top: 10px;
-  }
+  .lang-selector { width: 100%; }
 }
 
-
-/* Ссылки меню */
+/* Ссылки меню (desktop baseline) */
 .navbar-links {
   display: flex;
   flex-wrap: wrap;
@@ -136,92 +128,81 @@
 
 .navbar-links a {
   text-decoration: none;
-  color: #0057A3;
+  color: var(--csi-blue);
   font-weight: 500;
-  padding: 6px 14px;
-  border-radius: 5px;
+  padding: 8px 14px;
+  border-radius: 8px;
   background-color: transparent;
-  transition: all 0.3s ease;
+  transition: background-color .2s ease, color .2s ease, transform .05s ease;
   font-size: 15px;
   position: relative;
 }
 
 .navbar-links a:hover {
-  background-color: #eaf4fc;
-  color: #005b9a;
+  background-color: var(--csi-blue-050);
+  color: var(--csi-blue-600);
+}
+
+.navbar-links a:focus-visible {
+  outline: 2px solid var(--csi-blue);
+  outline-offset: 2px;
 }
 
 .navbar-links a.active {
-  background-color: #0071c2;
+  background-color: var(--csi-blue);
   color: #fff;
   font-weight: 600;
 }
+.navbar-links a.active:hover { background-color: var(--csi-blue-600); }
 
-.navbar-links a.active:hover {
-  background-color: #005b9a;
-}
-
-/* === Адаптивность === */
+/* === Адаптивность (мобильное меню) === */
 @media (max-width: 768px) {
-  .burger {
-    display: block;
-  }
+  .burger { display: block; }
 
   .navbar-brand {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
   }
 
+  /* Контролы (бургер+язык) складываются вправо/вниз при необходимости */
   .navbar-controls {
-    flex-direction: column;
-    align-items: flex-end;
-    width: 100%;
-    margin-top: 8px;
+    margin-left: auto;
   }
 
+  /* Сам список ссылок превращаем в «аккордеон» */
   .navbar-links {
     flex-direction: column;
+    width: 100%;
+    gap: 8px;
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.4s ease;
-    width: 100%;
+    padding: 0 0;                 /* убираем боковые паддинги у свернутого меню */
+    margin: 0 auto;
+    transition: max-height .35s ease;
+    border-top: 1px solid rgba(0,0,0,.06);
   }
 
+  /* Класс .active (который ты уже добавляешь в JS) раскрывает меню */
   .navbar-links.active {
-    max-height: 500px;
-    margin-top: 10px;
+    max-height: 520px;            /* достаточно для всех пунктов */
+    padding-top: 10px;
   }
 
+  /* Ссылки внутри — крупнее, с полным тач-таргетом по ширине */
   .navbar-links a {
-    padding: 8px 0;
-    opacity: 0;
-    transform: translateY(-10px);
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    padding: 12px 14px;
+    font-size: 16px;
+    border-radius: 10px;
   }
 
-  .navbar-links.active a {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  .navbar-links.active a:nth-child(1) { transition-delay: 0.05s; }
-  .navbar-links.active a:nth-child(2) { transition-delay: 0.10s; }
-  .navbar-links.active a:nth-child(3) { transition-delay: 0.15s; }
-  .navbar-links.active a:nth-child(4) { transition-delay: 0.20s; }
-  .navbar-links.active a:nth-child(5) { transition-delay: 0.25s; }
-  .navbar-links.active a:nth-child(6) { transition-delay: 0.30s; }
-  .navbar-links.active a:nth-child(7) { transition-delay: 0.35s; }
+  /* Небольшая «ступенька» появления (без жёстких задержек) */
+  .navbar-links.active a { opacity: 1; transform: none; }
 }
 
-@media (max-width: 768px) {
-  .navbar-links a {
-    border-radius: 8px;
-    padding: 10px 14px;
-    font-size: 16px;
-  }
-
-  .navbar-links a.active {
-    background-color: #0071c2;
-    color: white;
-  }
+/* Предпочтение пользователя без анимаций */
+@media (prefers-reduced-motion: reduce) {
+  .navbar-links,
+  .navbar-links a,
+  .burger,
+  .lang-selector { transition: none !important; }
 }

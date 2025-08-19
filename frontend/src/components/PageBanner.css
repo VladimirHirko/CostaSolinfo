@@ -1,5 +1,7 @@
+/* ===== Page Banner — без затемнения, ниже по высоте ===== */
+
 .page-banner-wrapper {
-  max-width: 1000px;
+  max-width: 1000px;           /* как у тебя было */
   margin: 0 auto;
   padding: 0 20px;
 }
@@ -8,24 +10,36 @@
   background-size: cover;
   background-position: center;
   border-radius: 12px;
-  padding: 80px 20px;
-  margin-bottom: 30px;
-  color: white;
-}
+  /* вместо больших отступов — компактно и стабильно по высоте */
+  padding: clamp(14px, 3vw, 24px) 20px;
+  min-height: clamp(120px, 18vw, 180px);  /* 🔹 низкий баннер */
+  margin-bottom: 24px;
+  color: #fff;
 
-.page-banner-content {
+  /* центрируем контент по вертикали, чтобы текст был по центру полосы */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  font-weight: bold;
-  font-size: 32px;
+
+  /* никакого затемнения! */
+  overflow: hidden;
 }
 
+/* контент баннера — компактный размер */
+.page-banner-content {
+  font-weight: 800;
+  font-size: clamp(18px, 4vw, 28px); /* было 32px — сделал чуть компактнее и флюидным */
+  line-height: 1.2;
+}
+
+/* общий контейнер страниц + главная как было */
 .page-container {
   max-width: 1000px;
   margin: 0 auto;
   padding: 0 20px;
 }
 
-/* Контейнер главной страницы */
 .home-page {
   padding: 20px;
   text-align: center;
@@ -33,30 +47,32 @@
   margin: 0 auto;
 }
 
-/* Заголовок */
+/* Заголовок на главной */
 .homepage-title {
-  font-size: 2em;
+  font-size: clamp(20px, 5vw, 32px);
   font-weight: bold;
   margin-bottom: 10px;
 }
 
-/* Подзаголовок */
+/* Подзаголовок (HTML из CKEditor) */
 .homepage-subtitle {
-  font-size: 1.1em;
+  font-size: 1.05em;
   line-height: 1.6;
   text-align: justify;
   color: #333;
   white-space: normal;
 }
+.homepage-subtitle p { margin-bottom: 0.8em; }
+.homepage-subtitle strong { font-weight: bold; }
+.homepage-subtitle em { font-style: italic; }
 
-.homepage-subtitle p {
-  margin-bottom: 0.8em;
+/* мобильные мелочи */
+@media (max-width: 600px) {
+  .page-banner { border-radius: 10px; margin-bottom: 20px; }
 }
 
-.homepage-subtitle strong {
-  font-weight: bold;
-}
-
-.homepage-subtitle em {
-  font-style: italic;
+/* ультра-узкий баннер при необходимости */
+.page-banner--compact {
+  min-height: 110px;
+  padding: 12px 16px;
 }

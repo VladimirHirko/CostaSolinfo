@@ -1,16 +1,16 @@
+/* ===== Privacy Policy Modal ===== */
+
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.4);
-  z-index: 11000;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.45);
+  z-index: 11000;                   /* поверх cookie-баннера */
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 10px;
   overflow: hidden;
+  backdrop-filter: blur(1px);
 }
 
 .modal-content {
@@ -24,51 +24,68 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  box-shadow: 0 24px 60px rgba(0,0,0,.2);
 }
 
 .policy-text {
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;  /* плавный скролл на iOS */
   flex: 1;
   margin-bottom: 20px;
   padding-right: 10px;
-  line-height: 1.5;
+  line-height: 1.6;
   font-size: 1rem;
 }
 
-/* Кнопка */
+/* Кнопка (брендовая) */
 .transfer-button {
   align-self: flex-end;
   padding: 10px 20px;
-  background-color: #007bff;
-  color: white;
+  background-color: #0057A3;          /* фирменный синий */
+  color: #fff;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-size: 1rem;
+  transition: background-color .2s ease, transform .05s ease;
 }
-
-/* При наведении на десктопе */
-.transfer-button:hover {
-  background-color: #0056b3;
+.transfer-button:hover { background-color: #004a8b; }
+.transfer-button:active { transform: translateY(1px); }
+.transfer-button:focus-visible {
+  outline: 2px solid #0057A3;
+  outline-offset: 2px;
 }
 
 /* 📱 Адаптив под мобильные */
-@media screen and (max-width: 600px) {
+@media (max-width: 600px) {
   .modal-content {
-    border-radius: 8px;
+    width: 95%;               /* чтобы не прилипало к краям */
+    margin: 0 auto;
+    border-radius: 10px;
     max-height: 90vh;
     padding: 15px;
   }
 
   .policy-text {
     font-size: 0.95rem;
-    padding-right: 5px;
+    padding-right: 6px;
+    scroll-padding-bottom: 56px;  /* запас под кнопку */
   }
 
+  /* Делаем кнопку удобной на тач-экранах + "липкой" внизу */
   .transfer-button {
     width: 100%;
     font-size: 1rem;
     padding: 12px;
     margin-top: 10px;
+    position: sticky;
+    bottom: 0;
+    border-radius: 10px;
   }
+}
+
+/* Уважение настроек пользователя */
+@media (prefers-reduced-motion: reduce) {
+  .transfer-button,
+  .modal-content { transition: none; }
 }

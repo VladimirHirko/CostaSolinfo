@@ -1,42 +1,49 @@
-/* Баннер главной страницы */
+/* ===== Home page ===== */
+
+/* Контейнер главной */
 .home-page {
-  padding: 20px;
+  padding: clamp(14px, 3.5vw, 20px);
   text-align: center;
   max-width: 1000px;
   margin: 0 auto;
 }
 
+/* Баннер (img): без затемнения, аккуратные тени и радиус */
 .homepage-banner {
   width: 100%;
   max-width: 1000px;
   height: auto;
+  display: block;                         /* убираем лишние зазоры */
   border-radius: 12px;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  margin-bottom: clamp(14px, 3.5vw, 20px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, .1);
 }
 
+/* Заголовок */
 .homepage-title {
-  font-size: 2em;
-  font-weight: bold;
+  font-size: clamp(20px, 5vw, 32px);
+  font-weight: 800;
   margin-bottom: 10px;
+  line-height: 1.2;
+  color: #0f172a;
 }
 
+/* Подзаголовок из CKEditor */
 .homepage-subtitle {
-  font-size: 1.1em;
-  line-height: 1.6;
+  font-size: clamp(15px, 2.2vw, 17px);
+  line-height: 1.7;
   text-align: justify;
   color: #333;
-  white-space: normal; /* было: pre-line */
+  white-space: normal;                    /* было: pre-line */
+  max-width: 80ch;                        /* комфортная длина строки */
+  margin: 0 auto;
 }
 
-.homepage-subtitle p {
-  margin-bottom: 0.8em; /* уменьшить расстояние между абзацами */
-}
+.homepage-subtitle p { margin-bottom: 0.8em; }
+.homepage-subtitle strong { font-weight: 700; }
+.homepage-subtitle em { font-style: italic; }
 
-.homepage-subtitle strong {
-  font-weight: bold;
-}
-
-.homepage-subtitle em {
-  font-style: italic;
+/* Мобильные мелочи */
+@media (max-width: 600px) {
+  .homepage-banner { border-radius: 10px; box-shadow: 0 3px 12px rgba(0,0,0,.08); }
 }
