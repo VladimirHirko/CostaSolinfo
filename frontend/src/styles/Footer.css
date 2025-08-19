@@ -43,11 +43,13 @@
 
 .footer-links ul {
   list-style: none;
+  color: #0057A3;
   padding: 0;
 }
 
 .footer-links ul li {
   margin: 6px 0;
+  color: #0057A3;
 }
 
 .footer-links ul li a {
@@ -80,11 +82,163 @@
   color: #007bff;
 }
 
-.footer-bottom {
-  text-align: center;
-  margin-top: 20px;
-  padding-top: 10px;
-  font-size: 13px;
-  color: #888;
-  border-top: 1px solid #ddd;
+:root{
+  --csi-primary:#007aff;     /* ваш синий */
+  --csi-accent:#ffc400;      /* ваш жёлтый */
+  --csi-ink:#1f2937;
+  --csi-muted:#6b7280;
 }
+
+/* нижняя полоса футера — в две колонки */
+.footer-bottom{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  padding:10px 0 0;
+  border-top:1px solid #e5e7eb;
+  margin-top:14px;
+  flex-wrap:wrap;
+}
+.footer-bottom-left p{
+  margin:0;
+  color:var(--csi-muted);
+  font-size:14px;
+}
+.footer-bottom-right{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+/* тихая ссылко-кнопка */
+.footer-linkbtn {
+  border: 0;
+  background: transparent;
+  padding: 6px 8px;
+  color: #0057A3;              /* фирменный синий */
+  font-size: 14px;
+  line-height: 1;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.footer-linkbtn:hover {
+  background: rgba(0, 122, 255, 0.08);   /* лёгкий синий фон при ховере */
+}
+
+.footer-linkbtn:focus {
+  outline: 2px solid #007aff;
+  outline-offset: 2px;
+}
+
+
+.footer .contacts a {
+  color: #333;              /* обычный цвет текста */
+  text-decoration: none;    /* убираем подчёркивание */
+  font-weight: 400;         /* делаем одинаковый вес с текстом */
+}
+
+.footer .contacts a:hover {
+  color: #0057A3;           /* 👈 при наведении фирменный синий */
+  text-decoration: underline; /* можно вернуть подчёркивание */
+}
+
+/* =========================
+   АДАПТИВ — планшеты (< 992px)
+   ========================= */
+@media (max-width: 992px) {
+  .footer-container {
+    gap: 8px;
+  }
+
+  .footer-left,
+  .footer-links,
+  .footer-right {
+    min-width: 260px;     /* карточки пошире */
+    flex: 1 1 45%;        /* две колонки */
+  }
+
+  .footer-links h4,
+  .footer-right h4 {
+    margin-bottom: 8px;
+  }
+
+  .footer-bottom {
+    padding-top: 12px;
+  }
+}
+
+/* =========================
+   АДАПТИВ — мобильные (< 600px)
+   ========================= */
+@media (max-width: 600px) {
+  .footer {
+    padding: 22px 16px 8px;
+  }
+
+  /* колонки в столбик + выравнивание по центру */
+  .footer-container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .footer-left,
+  .footer-links,
+  .footer-right {
+    margin: 6px 0;
+    min-width: 100%;
+    text-align: center;
+  }
+
+  /* список ссылок — в две колонки, если помещается */
+  .footer-links ul {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    gap: 6px 16px;
+    justify-items: center;
+  }
+
+  /* соцсети — центр и крупнее тач-таргеты */
+  .footer-socials {
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+  }
+  .footer-socials a {
+    font-size: 22px;
+  }
+
+  /* нижняя полоса — в столбик, по центру */
+  .footer-bottom {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+  .footer-bottom-left p {
+    font-size: 13px;
+  }
+  .footer-bottom-right {
+    justify-content: center;
+  }
+
+  /* «тихие» кнопки — чуть крупнее тач-таргеты */
+  .footer-linkbtn {
+    padding: 8px 10px;
+    border-radius: 10px;
+  }
+}
+
+/* =========================
+   МЕЛКИЕ ЭКРАНЫ (< 360px)
+   ========================= */
+@media (max-width: 360px) {
+  .footer-links ul {
+    grid-template-columns: 1fr; /* по одной ссылке в строке */
+    gap: 6px;
+  }
+}
+

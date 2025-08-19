@@ -1,10 +1,11 @@
-import React from 'react';
+// src/App.js
+import React, { useEffect, useState } from 'react';     // ⬅️ добавили useEffect, useState
 import './styles/main.css';
 import './styles/navbar.css';
 import 'leaflet/dist/leaflet.css';
 
 import ExcursionsPage from "./pages/ExcursionsPage";
-import ExcursionDetailPage from "./pages/ExcursionDetailPage"; // ✅ правильный импорт
+import ExcursionDetailPage from "./pages/ExcursionDetailPage";
 
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
@@ -17,15 +18,25 @@ import AskQuestionPage from './pages/AskQuestionPage';
 import ContactsPage from './pages/ContactsPage';
 import AboutUsPage from './pages/AboutUsPage';
 
-import Navbar from './components/Navbar'; // ✅ навигация вынесена сюда
-import Footer from './components/Footer'; // ✅ футер подключен
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import ScrollToTopButton from './components/ScrollToTopButton';
+import CookieBanner from './components/CookieBanner';
+import PrivacyPolicyModal from './components/PrivacyPolicyModal';  // ⬅️ НОВОЕ
 
 function App() {
+  const [openPrivacy, setOpenPrivacy] = useState(false); // ⬅️ НОВОЕ
+
+  // Глобальная функция, чтобы открыть модалку откуда угодно (баннер/футер)
+  useEffect(() => {
+    window.csiOpenPrivacy = () => setOpenPrivacy(true);
+    return () => { delete window.csiOpenPrivacy; };
+  }, []);
+
   return (
     <Router>
-      <Navbar /> {/* 👈 Навигация */}
-      
+      <Navbar />
+
       <div className="main-container" style={{ padding: '20px' }}>
         <Routes>
           <Route path="/" element={<HomePage />} />
@@ -41,8 +52,15 @@ function App() {
         </Routes>
       </div>
 
-      <Footer /> {/* 👈 Футер теперь на всех страницах */}
-      <ScrollToTopButton /> {/* 👈 кнопка наверх */}
+      <CookieBanner />
+      <Footer />
+      <ScrollToTopButton />
+
+      {/* ⬇️ Модалка политики — монтируется один раз на всём приложении */}
+      <PrivacyPolicyModal
+        isOpen={openPrivacy}
+        onClose={() => setOpenPrivacy(false)}
+      />
     </Router>
   );
 }

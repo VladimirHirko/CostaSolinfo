@@ -7,10 +7,10 @@ const Footer = () => {
   const { t } = useTranslation();
   const year = new Date().getFullYear();
 
-  // Заголовки/подписи с безопасным фолбэком:
+  // Заголовки/подписи с безопасным фолбэком
   const tagline = t("footer_tagline", "Ваш гид по Коста дель Соль");
   const navTitle = t("footer_nav_title", "Навигация");
-  const contactsTitle = t("contacts"); // ключ уже есть в твоём JSON
+  const contactsTitle = t("contacts");
   const rights = t("footer_rights", "Все права защищены.");
 
   return (
@@ -22,7 +22,7 @@ const Footer = () => {
           <p className="footer-slogan">{tagline}</p>
         </div>
 
-        {/* Средняя часть: ссылки (SPA-навигация через <Link />) */}
+        {/* Средняя часть: ссылки */}
         <div className="footer-links">
           <h4>{navTitle}</h4>
           <ul>
@@ -30,23 +30,25 @@ const Footer = () => {
             <li><Link to="/excursions">{t("excursions")}</Link></li>
             <li><Link to="/info-meeting">{t("info_meeting")}</Link></li>
             <li><Link to="/airport-transfer">{t("airport_transfer")}</Link></li>
-            <li><Link to="/ask">{t("ask")}</Link></li> {/* добавили */}
+            <li><Link to="/ask">{t("ask")}</Link></li>
             <li><Link to="/contacts">{t("contacts")}</Link></li>
             <li><Link to="/about">{t("about")}</Link></li>
           </ul>
         </div>
 
         {/* Правая часть: контакты + соцсети */}
-        <div className="footer-right">
+        <div className="footer-right contacts">{/* <-- добавлен класс contacts */}
           <h4>{contactsTitle}</h4>
+
           <p>
-            Email:{" "}
+            Email{" "}
             <a href="mailto:CostaSolinfo.Malaga@gmail.com">
               CostaSolinfo.Malaga@gmail.com
             </a>
           </p>
+
           <p>
-            WhatsApp:{" "}
+            WhatsApp{" "}
             <a href="https://wa.me/34660535089" target="_blank" rel="noreferrer">
               +34 660 535 089
             </a>
@@ -68,7 +70,31 @@ const Footer = () => {
 
       {/* Нижняя полоса */}
       <div className="footer-bottom">
-        <p>© {year} CostaSolinfo. {rights}</p>
+        <div className="footer-bottom-left">
+          <p>© {year} CostaSolinfo. {rights}</p>
+        </div>
+
+        <div className="footer-bottom-right">
+          <button
+            type="button"
+            className="footer-linkbtn"
+            onClick={() => window.csiOpenCookieSettings?.()}
+            aria-label={t('cookies.settings', 'Cookie settings')}
+            title={t('cookies.settings', 'Cookie settings')}
+          >
+            🍪 {t('cookies.settings', 'Cookie settings')}
+          </button>
+
+          <button
+            type="button"
+            className="footer-linkbtn"
+            onClick={() => window.csiOpenPrivacy?.()}
+            aria-label={t('privacy_policy', 'Privacy Policy')}
+            title={t('privacy_policy', 'Privacy Policy')}
+          >
+            {t('privacy_policy')}
+          </button>
+        </div>
       </div>
     </footer>
   );
