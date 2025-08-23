@@ -1,6 +1,8 @@
 import pandas as pd
 import datetime
 from django.db import models
+from django.conf import settings
+
 from django.contrib import admin, messages
 from django.core.mail import EmailMultiAlternatives, send_mail
 from django.shortcuts import render, redirect
@@ -68,9 +70,32 @@ class HomepageAdmin(TranslationAdmin):  # ключевое отличие
 
 
 # Инфо встреча
+class InfoMeetingAdminForm(forms.ModelForm):
+    class Meta:
+        model = InfoMeeting
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # навесим CKEditor на все поля контента (content, content_ru, content_en, ...)
+        for name in list(self.fields.keys()):
+            if name == 'content' or name.startswith('content_'):
+                self.fields[name].widget = CKEditorWidget(config_name='default')
+
 @admin.register(InfoMeeting)
-class InfoMeetingAdmin(admin.ModelAdmin):
+class InfoMeetingAdmin(TranslationAdmin):
+    form = InfoMeetingAdminForm
     list_display = ('title', 'location', 'date')
+
+    # как делали для Экскурсий/Homepage: сохраняем "сырое" HTML напрямую
+    def save_model(self, request, obj, form, change):
+        lang_codes = [code for code, _ in getattr(settings, 'LANGUAGES', (('ru','Russian'),))]
+        # собираем все потенциальные имена полей контента
+        field_names = ['content'] + [f'content_{code}' for code in lang_codes]
+        for fname in field_names:
+            if fname in request.POST:
+                setattr(obj, fname, request.POST.get(fname, ''))
+        super().save_model(request, obj, form, change)
 
 class InfoMeetingScheduleInline(admin.TabularInline):
     model = InfoMeetingScheduleItem

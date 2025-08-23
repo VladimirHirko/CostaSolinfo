@@ -1,19 +1,19 @@
 /* ===== Home page ===== */
 
-/* Контейнер главной */
+/* Контейнер главной (работает и для .page-container, и для .home-page) */
+.page-container,
 .home-page {
   padding: clamp(14px, 3.5vw, 20px);
-  text-align: center;
-  max-width: 1000px;
+  max-width: 1000px;  /* как у баннера */
   margin: 0 auto;
 }
 
-/* Баннер (img): без затемнения, аккуратные тени и радиус */
+/* Баннер */
 .homepage-banner {
   width: 100%;
   max-width: 1000px;
   height: auto;
-  display: block;                         /* убираем лишние зазоры */
+  display: block;
   border-radius: 12px;
   margin-bottom: clamp(14px, 3.5vw, 20px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, .1);
@@ -28,22 +28,32 @@
   color: #0f172a;
 }
 
-/* Подзаголовок из CKEditor */
+/* Подзаголовок / контент из админки */
 .homepage-subtitle {
   font-size: clamp(15px, 2.2vw, 17px);
   line-height: 1.7;
-  text-align: justify;
   color: #333;
-  white-space: normal;                    /* было: pre-line */
-  max-width: 80ch;                        /* комфортная длина строки */
+  white-space: normal;       /* важно: не 'pre-line' */
+  width: 100%;
+  max-width: 1000px;         /* = ширина баннера */
   margin: 0 auto;
+  text-align: left;          /* читается лучше, чем общий justify */
 }
 
-.homepage-subtitle p { margin-bottom: 0.8em; }
+/* Аккуратные отступы внутри контента */
+.homepage-subtitle h2,
+.homepage-subtitle h3 { margin: 0.6em 0 0.4em; }
+.homepage-subtitle p { margin: 0.5em 0; }
+.homepage-subtitle ul,
+.homepage-subtitle ol { margin: 0.4em 0 0.8em 1.2em; }
+.homepage-subtitle li { margin: 0.3em 0; }
 .homepage-subtitle strong { font-weight: 700; }
 .homepage-subtitle em { font-style: italic; }
 
 /* Мобильные мелочи */
 @media (max-width: 600px) {
-  .homepage-banner { border-radius: 10px; box-shadow: 0 3px 12px rgba(0,0,0,.08); }
+  .homepage-banner {
+    border-radius: 10px;
+    box-shadow: 0 3px 12px rgba(0,0,0,.08);
+  }
 }

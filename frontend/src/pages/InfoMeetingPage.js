@@ -78,7 +78,7 @@ const InfoMeetingPage = () => {
       <PageBanner page="info_meeting" />
 
       <div className="page-container">
-        <h2 className="mb-3">{t('info_meeting_title')}</h2>
+        
 
         <div
           className="welcome-text"
