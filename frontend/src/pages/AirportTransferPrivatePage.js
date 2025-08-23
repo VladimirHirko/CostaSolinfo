@@ -9,6 +9,14 @@ import 'react-datepicker/dist/react-datepicker.css';
 import TransferContent from '../components/TransferContent';
 import Breadcrumbs from "../components/Breadcrumbs";
 
+// добавь после импортов:
+const getIsoDate = (d) => {
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().split('T')[0];
+};
+
+const textFromApi = (t, data) =>
+  t(data?.message_key || data?.error_key || 'something_went_wrong');
 
 const AirportTransferPrivatePage = () => {
   const { t, i18n } = useTranslation();
@@ -92,101 +100,84 @@ const AirportTransferPrivatePage = () => {
       const response = await fetch(url);
       const data = await response.json();
 
+      // ----- OK (200) -----
       if (response.ok) {
-        if (Array.isArray(data)) {
-          if (data.length > 1 && !lastName) {
-            // Несколько трансферов — просим фамилию
-            setNeedLastName(true);
-            setTransfers(data);
-            setPickupTime('');
-            setPickupPoint('');
-            setPickupCoords(null);
-            setError(t('please_enter_last_name'));
-          } else if (data.length === 1 && !lastName?.trim()) {
-            // Один трансфер, но фамилия не введена — просим ввести
-            setNeedLastName(true);
-            setTransfers(data);
-            setPickupTime('');
-            setPickupPoint('');
-            setPickupCoords(null);
-            setError(t('please_enter_last_name'));
-          } else {
-            // Один трансфер и фамилия указана
-            const item = data[0];
-            setPickupTime(item.pickup_time || '');
-            setPickupPoint(item.pickup_point || '');
-            setPickupCoords({ lat: item.pickup_lat, lng: item.pickup_lng });
-            setNeedLastName(false);
-            setError('');
-          }
-        } else if (typeof data === 'object' && data.success) {
-          // Успешный точный результат
+        // Успешный точный ответ
+        if (data?.success === true) {
           setPickupTime(data.pickup_time || '');
           setPickupPoint(data.pickup_point || '');
-          setPickupCoords({ lat: data.pickup_lat, lng: data.pickup_lng });
+          setPickupCoords(
+            data.pickup_lat && data.pickup_lng ? { lat: data.pickup_lat, lng: data.pickup_lng } : null
+          );
           setNeedLastName(false);
+          setShowInquiryForm(false);
           setError('');
-        } else if (data.success === false && data.reason === 'multiple_transfers') {
+          return;
+        }
+
+        // Нужна фамилия (несколько семей / нет фамилии)
+        if (data?.success === false && data?.reason === 'need_last_name') {
           setNeedLastName(true);
-          setTransfers([]);
           setPickupTime('');
           setPickupPoint('');
           setPickupCoords(null);
+          setShowInquiryForm(false);
           setError(t('please_enter_last_name'));
-        } else if (data.success === false && data.reason === 'no_exact_match' && data.suggestion) {
-          setError(`${t('did_you_mean')} "${data.suggestion}"?`);
-        } else if (data.success === false && data.reason === 'need_last_name') {
-          setNeedLastName(true);
-          setTransfers([]);
-          setPickupTime('');
-          setPickupPoint('');
-          setPickupCoords(null);
-          setError(t('please_enter_last_name'));    
-
-        } else if (data.success === false && data.reason === 'not_found') {
-          setError(t('no_transfer_for_lastname'));
-          setShowInquiryForm(true);
-        } else {
-          setError(t('no_transfer_found'));
-          setPickupTime('');
-          setPickupPoint('');
-          setPickupCoords(null);
-        }
-      } else {
-        if (
-          data?.detail?.includes('No transfer schedule') ||
-          data?.error?.includes('No transfer schedule')
-        ) {
-          setError(t('no_transfer_schedule_for_this_date'));
-          setShowInquiryForm(true);
-          setPickupTime('');
-          setPickupPoint('');
-          setPickupCoords(null);
           return;
         }
 
-        if (data?.error?.includes('No transfer found for this last name')) {
-          setError(t('no_transfer_for_lastname'));
-          setShowInquiryForm(true);
+        // Время ещё не назначено — показываем понятное уведомление по ключу
+        if (data?.success === false && data?.reason === 'time_pending') {
+          setPickupTime(''); // времени нет
+          setPickupPoint(data.pickup_point || '');
+          setPickupCoords(
+            data.pickup_lat && data.pickup_lng ? { lat: data.pickup_lat, lng: data.pickup_lng } : null
+          );
+          setNeedLastName(!!lastName); // если уже ввели фамилию — не просим снова
+          setShowInquiryForm(false);
+          setError(textFromApi(t, data)); // по message_key
           return;
         }
 
-        if (data?.error === 'No exact match found' && data?.suggestion) {
+        // Есть подсказка по фамилии
+        if (data?.success === false && data?.reason === 'no_exact_match' && data?.suggestion) {
           setError(`${t('did_you_mean')} "${data.suggestion}"?`);
           return;
         }
 
-        // 👇 Новый универсальный блок
-        if (
-          data?.error &&
-          data.error.toLowerCase().includes('no transfer')
-        ) {
-          console.log('[DEBUG] Отображаем форму запроса, ошибка с сервера:', data.error);
+        // Не найдено конкретно по фамилии
+        if (data?.success === false && data?.reason === 'not_found') {
+          setError(t('no_transfer_for_lastname'));
           setShowInquiryForm(true);
+          setPickupTime('');
+          setPickupPoint('');
+          setPickupCoords(null);
+          return;
         }
 
-        setError(data?.error || t('something_went_wrong'));
+        // fallback
+        setError(textFromApi(t, data));
+        return;
       }
+
+      // ----- НЕ OK (404/400/…) -----
+      // если бэк вернул ключ ошибки — показываем перевод
+      if (data?.error_key || data?.message_key) {
+        setError(textFromApi(t, data));
+        // при «нет данных на дату/отель» показываем форму запроса
+        if (data?.error_key === 'no_transfer_found' || data?.message_key === 'no_transfer_found') {
+          setShowInquiryForm(true);
+        }
+      } else if (typeof data?.error === 'string' && data.error.toLowerCase().includes('no transfer')) {
+        setError(t('no_transfer_found_message'));
+        setShowInquiryForm(true);
+      } else {
+        setError(t('something_went_wrong'));
+      }
+
+      setPickupTime('');
+      setPickupPoint('');
+      setPickupCoords(null);
     } catch (err) {
       console.error(err);
       setError(t('something_went_wrong'));
@@ -457,6 +448,8 @@ const AirportTransferPrivatePage = () => {
             className="transfer-form left-aligned inquiry-form-animated"
             style={{ marginTop: '20px' }}
           >
+            <h3>{t('not_found_contact_us')}</h3>
+            
             <label>{t('your_last_name')}</label>
             <input
               type="text"

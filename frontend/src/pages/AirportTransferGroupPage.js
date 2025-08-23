@@ -10,6 +10,14 @@ import Button from '../components/Button';
 import TransferContent from '../components/TransferContent';
 import Breadcrumbs from "../components/Breadcrumbs";
 
+const getIsoDate = (d) => {
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().split('T')[0];
+};
+
+const textFromApi = (t, data) =>
+  t(data?.message_key || data?.error_key || 'something_went_wrong');
+
 
 const AirportTransferGroupPage = () => {
   const { t, i18n } = useTranslation();
@@ -80,41 +88,68 @@ const AirportTransferGroupPage = () => {
     }
 
     try {
-      const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-      const dateStr = localDate.toISOString().split('T')[0];
-
+      const dateStr = getIsoDate(date);
       const url = `http://localhost:8000/api/transfer-schedule/?hotel_id=${hotelId}&date=${dateStr}&type=group`;
 
       const response = await fetch(url);
       const data = await response.json();
 
       if (response.ok) {
-        setPickupTime(data.pickup_time || '');
-        setPickupPoint(data.pickup_point || '');
-        setPickupCoords({ lat: data.pickup_lat, lng: data.pickup_lng });
-        setError('');
-        setShowInquiryForm(false);  // сбрасываем форму
-      } else {
+        // время ещё не назначено
+        if (data?.success === false && data?.reason === 'time_pending') {
+          setPickupTime('');
+          setPickupPoint(data.pickup_point || '');
+          setPickupCoords(
+            data.pickup_lat && data.pickup_lng ? { lat: data.pickup_lat, lng: data.pickup_lng } : null
+          );
+          setShowInquiryForm(true);                  // ← показываем форму
+          setError(textFromApi(t, data));            // текст по ключу
+          return;
+        }
+
+        // успешный ответ
+        if (data?.success === true) {
+          setPickupTime(data.pickup_time || '');
+          setPickupPoint(data.pickup_point || '');
+          setPickupCoords(
+            data.pickup_lat && data.pickup_lng ? { lat: data.pickup_lat, lng: data.pickup_lng } : null
+          );
+          setError('');
+          setShowInquiryForm(false);
+          return;
+        }
+
+        // fallback
         setPickupTime('');
         setPickupPoint('');
         setPickupCoords(null);
-
-        if (
-          data.error &&
-          data.error.toLowerCase().includes('no transfer')
-        ) {
-          console.log('[DEBUG] Отображаем форму запроса, ошибка с сервера:', data.error);
-          setShowInquiryForm(true);
-        }
-
-        setError(data.error || t('something_went_wrong'));
+        setShowInquiryForm(true);
+        setError(textFromApi(t, data));
+        return;
       }
 
+      // НЕ ok (404/400/…)
+      setPickupTime('');
+      setPickupPoint('');
+      setPickupCoords(null);
+
+      if (data?.error_key || data?.message_key) {
+        setError(textFromApi(t, data));
+        if (data?.error_key === 'no_transfer_found' || data?.message_key === 'no_transfer_found') {
+          setShowInquiryForm(true);
+        }
+      } else if (typeof data?.error === 'string' && data.error.toLowerCase().includes('no transfer')) {
+        setError(t('no_transfer_found_message'));
+        setShowInquiryForm(true);
+      } else {
+        setError(t('something_went_wrong'));
+      }
     } catch (err) {
       console.error(err);
       setError(t('something_went_wrong'));
     }
   };
+
 
   const handleInquirySubmit = async (e) => {
     e.preventDefault();
@@ -301,7 +336,7 @@ const AirportTransferGroupPage = () => {
         {/* 🔹 Ошибка */}
         {error && (
           <div className="transfer-warning-box">
-            {t('no_transfer_found_message')}
+            {error}
           </div>
         )}
 
@@ -311,7 +346,78 @@ const AirportTransferGroupPage = () => {
           </div>
         )}
 
+        {showInquiryForm && (
+          <form onSubmit={handleInquirySubmit} className="transfer-form left-aligned" style={{ marginTop: '30px' }}>
+            <h3>{t('not_found_contact_us')}</h3>
 
+            {/* для групповых фамилия не обязательна — можешь убрать это поле */}
+            <label>{t('your_last_name')}</label>
+            <input
+              type="text"
+              value={inquiryLastName}
+              onChange={(e) => setInquiryLastName(e.target.value)}
+              className="transfer-input"
+            />
+
+            <label>{t('your_hotel')}</label>
+            <div className="autocomplete-wrapper">
+              <input
+                type="text"
+                value={inquiryHotel}
+                onChange={(e) => setInquiryHotel(e.target.value)}
+                placeholder={t('your_hotel')}
+                className="transfer-input"
+              />
+              {inquiryHotelSuggestions.length > 0 && !inquiryHotelSuggestions.some(h => h.name === inquiryHotel) && (
+                <ul className="autocomplete-list">
+                  {inquiryHotelSuggestions.map((item) => (
+                    <li key={item.id} onMouseDown={() => handleSelectInquiryHotel(item.name, item.id)}>
+                      {item.name}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <label>{t('departure_date')}</label>
+            <DatePicker
+              selected={inquiryDate}
+              onChange={(date) => setInquiryDate(date)}
+              placeholderText={t('select_date')}
+              className="transfer-input"
+              dateFormat="yyyy-MM-dd"
+            />
+
+            <label>{t('flight_number')}</label>
+            <input
+              type="text"
+              value={inquiryFlight}
+              onChange={(e) => setInquiryFlight(e.target.value)}
+              className="transfer-input"
+            />
+
+            <label>{t('question')}</label>
+            <textarea
+              value={inquiryMessage}
+              onChange={(e) => setInquiryMessage(e.target.value)}
+              className="transfer-input"
+            />
+
+            <label>{t('your_email')}</label>
+            <input
+              type="email"
+              value={inquiryEmail}
+              onChange={(e) => setInquiryEmail(e.target.value)}
+              className="transfer-input"
+            />
+
+            <Button className="transfer-button" style={{ marginTop: '15px' }}>
+              {t('send_request')}
+            </Button>
+          </form>
+        )}
+
+        
         {/* 🔹 Результат */}
         {pickupTime && (
           <div className="transfer-result">
@@ -328,66 +434,6 @@ const AirportTransferGroupPage = () => {
                   pickupName={pickupPoint}
                 />
               </div>
-            )}
-
-            {showInquiryForm && (
-              <form onSubmit={handleInquirySubmit} className="transfer-form left-aligned" style={{ marginTop: '30px' }}>
-                <h3>{t('no_transfer_found_contact')}</h3>
-
-                <label>{t('your_last_name')}</label>
-                <input
-                  type="text"
-                  value={inquiryLastName}
-                  onChange={(e) => setInquiryLastName(e.target.value)}
-                  className="transfer-input"
-                />
-
-                <label>{t('your_hotel')}</label>
-                <input
-                  type="text"
-                  value={inquiryHotel}
-                  onChange={(e) => setInquiryHotel(e.target.value)}
-                  className="transfer-input"
-                />
-
-                <label>{t('departure_date')}</label>
-                <DatePicker
-                  selected={inquiryDate}
-                  onChange={(date) => setInquiryDate(date)}
-                  placeholderText={t('select_date')}
-                  className="transfer-input"
-                  dateFormat="yyyy-MM-dd"
-                />
-
-                <label>{t('flight_number')}</label>
-                <input
-                  type="text"
-                  value={inquiryFlight}
-                  onChange={(e) => setInquiryFlight(e.target.value)}
-                  className="transfer-input"
-                />
-
-                <label>{t('question')}</label>
-                <textarea
-                  value={inquiryMessage}
-                  onChange={(e) => setInquiryMessage(e.target.value)}
-                  className="transfer-input"
-                />
-
-                <label>{t('your_email')}</label>
-
-                <input
-                  type="email"
-                  value={inquiryEmail}
-                  onChange={(e) => setInquiryEmail(e.target.value)}
-                  className="transfer-input"
-                />
-
-                <Button className="transfer-button" style={{ marginTop: '15px' }}>
-                  {t('send_request')}
-                </Button>
-
-              </form>
             )}
 
             {inquirySuccessMessage && (

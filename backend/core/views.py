@@ -1,4 +1,5 @@
 import Levenshtein
+
 from datetime import datetime
 from rest_framework.generics import RetrieveAPIView, ListAPIView, CreateAPIView
 from rest_framework.views import APIView
@@ -49,6 +50,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Главное правило: RetrieveAPIView + queryset + serializer_class
+
+import unicodedata
+
+def normalize_last_name(s: str) -> str:
+    if not s:
+        return ""
+    s = unicodedata.normalize("NFKD", s)
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))  # убрать диакритику: Müller -> Muller
+    return s.strip().casefold()  # регистр/пробелы
+
 
 # Получение баннеров на страницах
 def page_banner_api(request, page):
@@ -191,33 +202,49 @@ class TransferScheduleLookupView(APIView):
             transfer_type = data['transfer_type']
             hotel_id = data['hotel_id']
             departure_date = data['departure_date']
-            last_name = data.get('passenger_last_name', '').strip().lower()
+            last_name = data.get('passenger_last_name', '').strip()
 
             qs = TransferSchedule.objects.filter(
                 transfer_type=transfer_type,
                 hotel_id=hotel_id,
                 departure_date=departure_date
             )
-
             if transfer_type == 'private' and last_name:
-                qs = qs.filter(passenger_last_name__iexact=last_name)
+                qs = qs.filter(passengers__last_name__iexact=last_name)
 
             transfer = qs.first()
             if not transfer:
                 return Response({'error': 'Трансфер не найден'}, status=404)
 
-            response = {
-                'departure_time': transfer.departure_time,
-                'pickup_point_name': transfer.pickup_point.name if transfer.pickup_point else '',
-                'pickup_point_lat': transfer.pickup_point.latitude if transfer.pickup_point else None,
-                'pickup_point_lng': transfer.pickup_point.longitude if transfer.pickup_point else None,
-                'hotel_lat': transfer.hotel.latitude,
-                'hotel_lng': transfer.hotel.longitude,
-            }
+            pp = transfer.pickup_point or PickupPoint.objects.filter(
+                hotel=transfer.hotel, transfer_type=transfer.transfer_type
+            ).first()
 
-            return Response(response, status=200)
+            if not transfer.departure_time:
+                return Response({
+                    "success": False,
+                    "reason": "time_pending",
+                    "message_key": "transfer_time_pending",
+                    "pickup_point_name": pp.name if pp else '',
+                    "pickup_point_lat": pp.latitude if pp else None,
+                    "pickup_point_lng": pp.longitude if pp else None,
+                    "hotel_lat": transfer.hotel.latitude,
+                    "hotel_lng": transfer.hotel.longitude,
+                }, status=200)
+
+            return Response({
+                "success": True,
+                "departure_time": transfer.departure_time.strftime("%H:%M"),
+                "pickup_point_name": pp.name if pp else '',
+                "pickup_point_lat": pp.latitude if pp else None,
+                "pickup_point_lng": pp.longitude if pp else None,
+                "hotel_lat": transfer.hotel.latitude,
+                "hotel_lng": transfer.hotel.longitude,
+            }, status=200)
 
         return Response(serializer.errors, status=400)
+
+
 
 # Вывод информации о трансфере для туриста
 @api_view(['GET'])
@@ -260,7 +287,10 @@ def transfer_schedule_view(request):
         ).first()
 
         if not group:
-            return Response({'error': 'No transfer group found'}, status=404)
+            return Response({
+                "ok": False,
+                "message_key": "no_transfer_found"   # ← ключ из вашего translation.json
+            }, status=404)
 
         schedules = group.schedules.filter(hotel_id=hotel_id).order_by('departure_time')
 
@@ -276,28 +306,53 @@ def transfer_schedule_view(request):
                     "message": "Укажите фамилию для получения информации о трансфере."
                 }, status=200)
 
-            # === Точное совпадение ===
-            exact = schedules.filter(passenger_last_name__iexact=last_name).first()
+            norm_input = normalize_last_name(last_name)
+
+            # === Точное совпадение по любому пассажиру семьи ===
+            exact = (schedules
+                     .filter(passengers__last_name__iexact=last_name)
+                     .first())
             if exact:
                 pp = exact.pickup_point or PickupPoint.objects.filter(
-                    hotel=exact.hotel,
-                    transfer_type='private'
+                    hotel=exact.hotel, transfer_type='private'
                 ).first()
+
+                # ⬇ NEW: если время ещё не проставлено — возвращаем понятный статус
+                if not exact.departure_time:
+                    return Response({
+                        "success": False,
+                        "reason": "time_pending",
+                        "message_key": "transfer_time_pending",
+                        "pickup_point": pp.name if pp else "—",
+                        "pickup_lat": pp.latitude if pp else None,
+                        "pickup_lng": pp.longitude if pp else None,
+                    }, status=200)
+
                 return Response({
                     "success": True,
                     "pickup_time": exact.departure_time.strftime("%H:%M"),
                     "pickup_point": pp.name if pp else "—",
                     "pickup_lat": pp.latitude if pp else None,
                     "pickup_lng": pp.longitude if pp else None,
-                })
+                }, status=200)
 
-            # === Fuzzy поиск по фамилии ===
+
+            # === Fuzzy: пробегаем ВСЕ фамилии пассажиров этих семей ===
+            # (собираем один список фамилий)
+            from core.models import TransferPassenger
+            fams = list(
+                TransferPassenger.objects
+                .filter(schedule__in=schedules.values("id"))
+                .values_list("last_name", flat=True)
+            )
+
             candidates = []
-            for ln in schedules.values_list('passenger_last_name', flat=True):
-                if ln:
-                    dist = levenshtein_distance(last_name, ln.lower())
-                    if 0 < dist <= 3:
-                        candidates.append((dist, ln))
+            for ln in fams:
+                if not ln:
+                    continue
+                dist = levenshtein_distance(norm_input, normalize_last_name(ln))
+                if 0 < dist <= 3:
+                    candidates.append((dist, ln))
             if candidates:
                 candidates.sort()
                 return Response({
@@ -306,7 +361,6 @@ def transfer_schedule_view(request):
                     "suggestion": candidates[0][1]
                 })
 
-            # === Фамилия не найдена ===
             return Response({
                 "success": False,
                 "reason": "not_found",
@@ -341,16 +395,30 @@ def transfer_schedule_view(request):
         else:
             # Найдём хотя бы один трансфер
             ts = schedules.first()
-
-            # Если у него нет явно заданной pickup_point — ищем по отелю
             pp = ts.pickup_point if ts and ts.pickup_point else PickupPoint.objects.filter(hotel_id=hotel_id, transfer_type='group').first()
 
+            if not ts:
+                return Response({'error': 'No transfer schedule found'}, status=404)
+
+            # ⬇ NEW: если времени нет — возвращаем понятный статус (и не форматируем None)
+            if not ts.departure_time:
+                return Response({
+                    "success": False,
+                    "reason": "time_pending",
+                    "message_key": "group_transfer_time_pending",
+                    "pickup_point": pp.name if pp else "—",
+                    "pickup_lat": pp.latitude if pp else None,
+                    "pickup_lng": pp.longitude if pp else None,
+                }, status=200)
+
             return Response({
-                "pickup_time": ts.departure_time.strftime("%H:%M") if ts else None,
+                "success": True,
+                "pickup_time": ts.departure_time.strftime("%H:%M"),
                 "pickup_point": pp.name if pp else "—",
                 "pickup_lat": pp.latitude if pp else None,
                 "pickup_lng": pp.longitude if pp else None,
-            })
+            }, status=200)
+
 
 
     except Exception as e:
@@ -411,16 +479,16 @@ class TransferNotificationViewSet(viewsets.ViewSet):
                             "status": "missing_last_name"
                         }, status=400)
 
-                    # 🔍 Печать всех фамилий в расписании для отладки
+                    # Печать всех фамилий (для отладки)
                     print("== ВСЕ ФАМИЛИИ В БАЗЕ ==")
                     for s in schedules:
-                        print(f"[БД]: '{s.passenger_last_name.strip().lower()}'")
-
+                        for p in s.passengers.all():
+                            print(f"[БД]: '{p.last_name.strip().lower()}'")
                     print(f"[ИЩЕМ]: '{instance.last_name.strip().lower()}'")
 
-                    # 🔍 Пытаемся найти по фамилии
+                    # Поиск по любому пассажиру семьи
                     transfer_item = schedules.filter(
-                        passenger_last_name__iexact=instance.last_name.strip()
+                        passengers__last_name__iexact=instance.last_name.strip()
                     ).first()
 
                     if not transfer_item:

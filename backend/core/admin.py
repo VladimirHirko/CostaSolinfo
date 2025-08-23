@@ -1,6 +1,6 @@
 import pandas as pd
 import datetime
-from django.db import models
+from django.db import models, transaction
 from django.conf import settings
 
 from django.contrib import admin, messages
@@ -21,7 +21,7 @@ from .models import (
     TransferChangeLog, PrivacyPolicy, Homepage, InfoMeetingScheduleItem,
     ExcursionPickupPoint, ExcursionRegionPrice, ExcursionContentBlock, 
     ExcursionPickupReference, ExcursionImage, Question, TeamMember,
-    TransferPageContentBlock
+    TransferPageContentBlock, TransferPassenger
 )
 from leaflet.admin import LeafletGeoAdmin
 from leaflet.forms.widgets import LeafletWidget
@@ -35,6 +35,15 @@ from django.utils.timezone import now, localtime
 from django.utils.translation import activate, deactivate_all, gettext as _
 from core.utils import send_html_email, send_answer_notification
 from .forms import ExcursionAdminForm, BulkTransferScheduleForm, ExcursionPickupPointForm
+
+import io, csv
+from datetime import datetime
+
+try:
+    import pandas as pd
+except Exception:
+    pd = None
+
 
 # Баннеры на старницах
 @admin.register(PageBanner)
@@ -664,17 +673,276 @@ class PrivatePickupPointAdmin(admin.ModelAdmin):
         ''')
         return super().changeform_view(request, object_id, form_url, extra_context=extra_context)
 
+
+class TransferPassengerInline(admin.TabularInline):
+    model = TransferPassenger
+    extra = 0
+
+@admin.register(TransferSchedule)
+class TransferScheduleAdmin(admin.ModelAdmin):
+    list_display = ("transfer_type","booking_service_number","hotel","departure_date","departure_time")
+    list_filter  = ("transfer_type","departure_date","hotel")
+    search_fields = ("booking_service_number","hotel__name","passengers__last_name","passengers__first_name")
+    inlines = [TransferPassengerInline]
+
+
 class TransferScheduleItemInline(admin.TabularInline):
     model = TransferSchedule
-    extra = 1  # сколько пустых строк по умолчанию,,,
-    autocomplete_fields = ['hotel', 'pickup_point']
-    fields = ('hotel', 'departure_time', 'pickup_point', 'passenger_last_name')
-    show_change_link = True
+    extra = 0
+    autocomplete_fields = ("hotel", "pickup_point")
+    show_change_link = True  # ← появится иконка-ссылка "карандаш" к самой записи
+
+    fields = (
+        "hotel", "departure_date", "departure_time",
+        "pickup_point", "booking_service_number",
+        "passenger_list",    # ← показываем фамилии семьи
+    )
+    readonly_fields = ("passenger_list",)
+
+    def passenger_list(self, obj):
+        if not obj.pk:
+            return "—"
+        names = [f"{p.last_name} {p.first_name}".strip() for p in obj.passengers.all()]
+        return ", ".join(names) if names else "—"
+    passenger_list.short_description = "Пассажиры (фамилии)"
     
 
 @admin.register(TransferScheduleGroup)
 class TransferScheduleGroupAdmin(admin.ModelAdmin):
     inlines = [TransferScheduleItemInline]
+
+    # ⬇⬇⬇ ДОБАВЛЕНО: кнопка «Импорт» на списке групп
+    change_list_template = "admin/core/transferschedulegroup/change_list.html"
+
+    def get_urls(self):
+        return [
+            path("import/", self.admin_site.admin_view(self.import_view),
+                 name="core_transferschedulegroup_import"),
+        ] + super().get_urls()
+
+    # ==========================
+    # ========== ИМПОРТ =========
+    # ==========================
+
+    def _parse_date(self, v):
+        if v is None or str(v).strip() == "":
+            return None
+        if isinstance(v, datetime):
+            return v.date()
+        s = str(v).strip()
+        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d.%m.%Y"):
+            try:
+                return datetime.strptime(s, fmt).date()
+            except Exception:
+                pass
+        return None
+
+    def _find_hotel(self, name):
+        if not name:
+            return None
+        name = str(name).strip()
+        h = Hotel.objects.filter(name__iexact=name).first()
+        return h or Hotel.objects.filter(name__icontains=name).first()
+
+    def _read_table(self, fobj, fname):
+        """
+        Читает Excel/CSV и находит строку заголовков (ищет 'Номер услуги'/'Номер заявки').
+        Возвращает DataFrame с нормальными заголовками.
+        """
+        if fname.endswith(".xlsx"):
+            if not pd:
+                raise RuntimeError("Для .xlsx нужен pandas (pip install pandas openpyxl).")
+            df_raw = pd.read_excel(fobj, header=None)
+        else:
+            text = fobj.read().decode("utf-8")
+            reader = list(csv.reader(io.StringIO(text)))
+            import pandas as _pd
+            df_raw = _pd.DataFrame(reader)
+
+        header_row = None
+        for i in range(min(30, len(df_raw))):
+            row_vals = [str(x) for x in list(df_raw.iloc[i].values)]
+            if any(v.startswith("Номер услуги") or v.startswith("Номер заявки") for v in row_vals):
+                header_row = i
+                break
+        if header_row is None:
+            # fallback: вдруг сразу корректная шапка
+            header_row = 0
+
+        # перечитываем с корректной шапкой
+        if fname.endswith(".xlsx"):
+            fobj.seek(0)
+            df = pd.read_excel(fobj, header=header_row)
+        else:
+            df = pd.read_csv(io.StringIO(text), header=header_row)
+
+        # нормализуем имена колонок (без lower(), т.к. у нас русские заголовки)
+        df.columns = [str(c).strip() for c in df.columns]
+        return df
+
+    def import_view(self, request):
+        if request.method == "POST" and request.FILES.get("file"):
+            up = request.FILES["file"]
+            name = up.name.lower()
+
+            try:
+                df = self._read_table(up, name)
+
+                # обязательные колонки из твоего файла:
+                required = {"Отель", "Дата отъезда", "Тип трансфера"}
+                if not required.issubset(set(df.columns)):
+                    raise RuntimeError(f"В файле должны быть колонки: {', '.join(sorted(required))}")
+
+                created = updated = skipped = errors = 0
+                log = []
+
+                rows = []
+
+                # --- PRIVATE: группировка по номеру услуги (семья одной строкой) ---
+                priv_mask = df["Тип трансфера"].astype(str).str.upper().isin(["I", "PRIVATE", "ИНДИВИДУАЛЬНЫЙ"])
+                priv_df = df[priv_mask]
+                if not priv_df.empty:
+                    if "Номер услуги" not in df.columns:
+                        raise RuntimeError("Для индивидуальных нужен столбец 'Номер услуги'.")
+
+                    gb = priv_df.groupby(["Номер услуги", "Отель", "Дата отъезда"], dropna=False)
+                    for (service, hotel_name, dep_date), grp in gb:
+                        dep = self._parse_date(dep_date)
+                        passengers = []
+                        for _, r in grp.iterrows():
+                            last_name = str(r.get("Фамилия") or "").strip()
+                            first_name = str(r.get("Имя") or "").strip()
+                            birth_date = self._parse_date(r.get("Дата рождения"))
+                            if last_name:
+                                passengers.append(dict(
+                                    last_name=last_name,
+                                    first_name=first_name,
+                                    birth_date=birth_date
+                                ))
+
+                        rows.append(dict(
+                            transfer_type="private",
+                            hotel_name=hotel_name,
+                            dep_date=dep,
+                            booking_service_number=str(service).strip(),
+                            passengers=passengers
+                        ))
+
+                # --- GROUP: одна строка на (Отель, Дата отъезда) ---
+                grp_mask = df["Тип трансфера"].astype(str).str.upper().isin(["G", "GROUP", "ГРУППОВОЙ"])
+                grp_df = df[grp_mask]
+                if not grp_df.empty:
+                    gb2 = grp_df.groupby(["Отель", "Дата отъезда"], dropna=False)
+                    for (hotel_name, dep_date), _grp in gb2:
+                        dep = self._parse_date(dep_date)
+                        rows.append(dict(
+                            transfer_type="group",
+                            hotel_name=hotel_name,
+                            dep_date=dep,
+                            booking_service_number="",   # для группового не нужен
+                            passengers=[]
+                        ))
+
+                # --- СОЗДАНИЕ/ОБНОВЛЕНИЕ ---
+                for r in rows:
+                    try:
+                        ttype = r["transfer_type"]
+                        date = r["dep_date"]
+                        hotel = self._find_hotel(r["hotel_name"])
+
+                        if not ttype or not date or not hotel:
+                            skipped += 1
+                            log.append(f"SKIP: ttype={ttype}, date={date}, hotel={r['hotel_name']!r}")
+                            continue
+
+                        with transaction.atomic():
+                            group, _ = TransferScheduleGroup.objects.get_or_create(
+                                date=date, transfer_type=ttype
+                            )
+
+                            if ttype == "private":
+                                # одна запись на семью (по номеру услуги)
+                                sched, created_flag = TransferSchedule.objects.get_or_create(
+                                    group=group,
+                                    hotel=hotel,
+                                    departure_date=date,
+                                    booking_service_number=r.get("booking_service_number", ""),
+                                    defaults=dict(
+                                        transfer_type="private",
+                                        departure_time=None,        # время заполнишь позже
+                                        passenger_last_name="",     # не используем для поиска
+                                        pickup_point=None,          # подтянется в save() из hotel.pickup_point
+                                    )
+                                )
+
+                                # добавим всех пассажиров (фамилии/имена)
+                                existing = {(p.last_name, p.first_name) for p in sched.passengers.all()}
+                                for p in r.get("passengers", []):
+                                    key = (p["last_name"], p["first_name"])
+                                    if p["last_name"] and key not in existing:
+                                        TransferPassenger.objects.create(
+                                            schedule=sched,
+                                            last_name=p["last_name"],
+                                            first_name=p["first_name"],
+                                            birth_date=p.get("birth_date"),
+                                        )
+
+                                if created_flag:
+                                    created += 1
+                                    log.append(f"CREATE: {sched}")
+                                else:
+                                    updated += 1
+                                    log.append(f"UPDATE: {sched}")
+
+                            else:
+                                # group: одна строка на (отель, дата)
+                                qs = TransferSchedule.objects.filter(
+                                    group=group, hotel=hotel,
+                                    departure_date=date,
+                                    transfer_type="group"
+                                )
+                                if qs.exists():
+                                    obj = qs.first()
+                                    updated += 1
+                                    log.append(f"UPDATE: {obj}")
+                                else:
+                                    obj = TransferSchedule.objects.create(
+                                        group=group,
+                                        transfer_type="group",
+                                        hotel=hotel,
+                                        departure_date=date,
+                                        departure_time=None,
+                                        passenger_last_name="",
+                                        pickup_point=None,
+                                    )
+                                    created += 1
+                                    log.append(f"CREATE: {obj}")
+
+                    except Exception as e:
+                        errors += 1
+                        log.append(f"ERROR: {e}")
+
+                messages.success(
+                    request,
+                    f"Импорт: создано {created}, обновлено {updated}, пропущено {skipped}, ошибок {errors}."
+                )
+                for line in log[:15]:
+                    messages.info(request, line)
+                if len(log) > 15:
+                    messages.info(request, f"...и ещё {len(log)-15} строк лога")
+
+            except Exception as e:
+                messages.error(request, f"Ошибка импорта: {e}")
+
+            return redirect("admin:core_transferschedulegroup_changelist")
+
+        # GET — форма загрузки
+        ctx = dict(self.admin_site.each_context(request))
+        return render(request, "admin/core/transferschedulegroup/import.html", ctx)
+
+    # ==========================
+    # ========== SAVE ==========
+    # ==========================
 
     def save_formset(self, request, form, formset, change):
         instances = formset.save(commit=False)
@@ -714,7 +982,7 @@ class TransferScheduleGroupAdmin(admin.ModelAdmin):
                     changed_at=now()
                 )
 
-                # === 🔁 Уведомления
+                # === 🔁 Уведомления (твоя логика — без изменений)
                 notifications = TransferNotification.objects.filter(
                     hotel=instance.hotel,
                     departure_date=instance.group.date,
@@ -731,9 +999,11 @@ class TransferScheduleGroupAdmin(admin.ModelAdmin):
                     print(f"[CHECK] Сравниваем '{notif_last}' == '{schedule_last}'")
 
                     if notif.transfer_type == 'private' and notif.last_name:
-                        if notif_last != schedule_last:
-                            print(f"[SKIP] Фамилия не совпала для {notif.email} — уведомление не отправляем.")
+                        has_match = instance.passengers.filter(last_name__iexact=notif.last_name.strip()).exists()
+                        if not has_match:
+                            print(f"[SKIP] Фамилия не найдена среди пассажиров семьи — {notif.email}")
                             continue
+
                     else:
                         print(f"[GROUP] Это групповой трансфер или пустая фамилия — отправляем всем.")
 

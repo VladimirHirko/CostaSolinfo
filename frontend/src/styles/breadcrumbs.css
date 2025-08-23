@@ -1,86 +1,72 @@
-/* ===== Breadcrumbs ===== */
+/* ===== Breadcrumbs (контрастная версия) ===== */
 .breadcrumbs {
   margin: clamp(6px, 2vw, 16px) 0;
-  font-size: clamp(13px, 1.6vw, 14px);
-  color: #444;
+  font-size: clamp(14px, 1.4vw, 15px);   /* чуть крупнее */
+  letter-spacing: .2px;
+  color: #374151;                         /* slate-700 */
 }
 
-/* контейнер-лента, чтобы на узких экранах можно было скроллить по горизонтали */
 .breadcrumbs ol {
   list-style: none;
   padding: 0;
   margin: 0;
   display: flex;
-  gap: clamp(6px, 1.6vw, 8px);
+  gap: clamp(6px, 1.6vw, 10px);
   flex-wrap: wrap;
-}
-
-@media (max-width: 480px) {
-  .breadcrumbs ol {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-  }
-  .breadcrumbs ol::-webkit-scrollbar { height: 6px; }
-  .breadcrumbs ol::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 4px; }
 }
 
 .breadcrumbs li {
   display: inline-flex;
   align-items: center;
-  opacity: .85;
+  /* убираем общую полупрозрачность */
+  opacity: 1;
   white-space: nowrap;
-  max-width: 50vw;                 /* предотвращаем «выталкивание» макета длинными названиями */
+  max-width: 50vw;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: #6b7280;                         /* slate-500 — для «обычных» элементов */
+  font-weight: 500;
 }
 
 .breadcrumbs li.current {
+  color: #111827;                         /* slate-900 — активный */
   font-weight: 600;
-  opacity: 1;
 }
 
-/* разделитель */
+/* разделитель — явный цвет, без opacity */
 .breadcrumbs li:not(.current)::after {
   content: "›";
   margin: 0 clamp(4px, 1vw, 8px);
-  opacity: .5;
+  color: #9ca3af;                         /* slate-400 */
 }
 
-/* RTL поддержка: переворачиваем разделитель */
-:root:dir(rtl) .breadcrumbs li:not(.current)::after {
-  content: "‹";
-}
-
-/* ссылки */
+/* ссылки — явный цвет + hover */
 .breadcrumbs a {
-  color: inherit;
+  color: #374151;                         /* совпадает с .breadcrumbs */
   text-decoration: none;
   border-bottom: 1px dotted transparent;
   transition: border-color .2s ease, color .2s ease;
 }
-
 .breadcrumbs a:hover {
+  color: #0ea5e9;                         /* sky-500 */
   border-bottom-color: currentColor;
 }
 
-/* доступность: видимый фокус при таб-навигации */
+/* видимый фокус */
 .breadcrumbs a:focus-visible {
-  outline: 2px solid #0057A3;
+  outline: 2px solid #0ea5e9;
   outline-offset: 2px;
   border-bottom-color: transparent;
 }
 
-/* high-contrast/темная тема (если будет) */
+/* RTL */
+:root:dir(rtl) .breadcrumbs li:not(.current)::after { content: "‹"; }
+
+/* тёмная тема (если понадобится) */
 @media (prefers-color-scheme: dark) {
   .breadcrumbs { color: #e5e7eb; }
-  .breadcrumbs a:focus-visible { outline-color: #73b0ff; }
-  .breadcrumbs ol::-webkit-scrollbar-thumb { background: rgba(255,255,255,.25); }
-}
-
-/* длинные цепочки: слегка «приглушаем» средние элементы, крайние — ярче */
-.breadcrumbs li:first-child,
-.breadcrumbs li.current {
-  opacity: 1;
+  .breadcrumbs li { color: #d1d5db; }
+  .breadcrumbs li.current { color: #fff; }
+  .breadcrumbs li:not(.current)::after { color: #9ca3af; }
+  .breadcrumbs a:hover { color: #93c5fd; }
 }

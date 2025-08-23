@@ -1,0 +1,11 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+  <h1>Импорт расписаний трансферов</h1>
+  <p>Ожидаемые колонки: <code>Номер услуги, Отель, Дата отъезда, Тип трансфера, Фамилия, Имя, Дата рождения</code></p>
+  <form method="post" enctype="multipart/form-data" style="margin-top:1rem;">
+    {% csrf_token %}
+    <input type="file" name="file" accept=".csv,.xlsx" required>
+    <button type="submit" class="grp-button">Импортировать</button>
+    <a href="{% url 'admin:core_transferschedulegroup_changelist' %}" class="grp-button">Отмена</a>
+  </form>
+{% endblock %}

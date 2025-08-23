@@ -163,6 +163,12 @@ class TransferSchedule(models.Model):
     departure_date = models.DateField(verbose_name="Дата выезда")
     departure_time = models.TimeField(verbose_name="Время выезда")
     pickup_point = models.ForeignKey('PickupPoint', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Точка сбора")
+    
+    booking_service_number = models.CharField(
+        max_length=50, blank=True, db_index=True, verbose_name="Номер услуги/заявки"
+    )
+    departure_time = models.TimeField("Время выезда", null=True, blank=True)  # чтобы импортировать без времени
+
     passenger_last_name = models.CharField(max_length=100, blank=True, verbose_name="Фамилия туриста (если нужно)")
     group = models.ForeignKey(
         'TransferScheduleGroup',
@@ -197,6 +203,22 @@ class TransferScheduleGroup(models.Model):
 
     def __str__(self):
         return f"{self.get_transfer_type_display()} — {self.date}"
+
+class TransferPassenger(models.Model):
+    schedule = models.ForeignKey(
+        'TransferSchedule', on_delete=models.CASCADE, related_name='passengers'
+    )
+    last_name = models.CharField(max_length=100, db_index=True, verbose_name="Фамилия")
+    first_name = models.CharField(max_length=100, blank=True, verbose_name="Имя")
+    birth_date = models.DateField(null=True, blank=True, verbose_name="Дата рождения")
+
+    class Meta:
+        unique_together = ('schedule', 'last_name', 'first_name')  # от дублей в одной семье
+        ordering = ['last_name', 'first_name']
+
+    def __str__(self):
+        return f"{self.last_name} {self.first_name}".strip()
+
 
 # Модель для подписки TransferNotification
 class TransferNotification(models.Model):
