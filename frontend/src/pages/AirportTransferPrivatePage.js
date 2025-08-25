@@ -190,7 +190,7 @@ const AirportTransferPrivatePage = () => {
   const handleInquirySubmit = async (e) => {
     e.preventDefault();
 
-    if (!inquiryLastName || !inquiryHotel || !inquiryDate || !inquiryEmail) {
+    if (!inquiryLastName || !inquiryHotelId || !inquiryDate || !inquiryEmail) {
       setError(t('please_fill_all_fields'));
       return;
     }
@@ -356,7 +356,7 @@ const AirportTransferPrivatePage = () => {
         <Breadcrumbs items={[
           { to: "/", label: t("home") },
           { to: "/airport-transfer", label: t("airport_transfer") },
-          { label: t("group_transfer") } // или t("private_transfer")
+          { label: t("private_transfer") } // или t("private_transfer")
         ]}/>
         
         <h1>{t('private_transfer')}</h1>
@@ -430,17 +430,7 @@ const AirportTransferPrivatePage = () => {
           </div>
         )}
 
-        {error === 'No transfer found for this last name' && (
-          <div style={{ marginTop: '30px' }}>
-            <p>{t('not_found_contact_us')}</p>
-            <button
-              className="transfer-button"
-              onClick={() => setShowInquiryForm(true)}
-            >
-              {t('open_contact_form')}
-            </button>
-          </div>
-        )}
+        
 
         {showInquiryForm && (
           <form

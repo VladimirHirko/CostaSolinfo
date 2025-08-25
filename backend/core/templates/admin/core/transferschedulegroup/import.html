@@ -1,11 +1,74 @@
 {% extends "admin/base_site.html" %}
+
 {% block content %}
-  <h1>Импорт расписаний трансферов</h1>
-  <p>Ожидаемые колонки: <code>Номер услуги, Отель, Дата отъезда, Тип трансфера, Фамилия, Имя, Дата рождения</code></p>
-  <form method="post" enctype="multipart/form-data" style="margin-top:1rem;">
-    {% csrf_token %}
-    <input type="file" name="file" accept=".csv,.xlsx" required>
-    <button type="submit" class="grp-button">Импортировать</button>
-    <a href="{% url 'admin:core_transferschedulegroup_changelist' %}" class="grp-button">Отмена</a>
-  </form>
+<style>
+  .cs-import-form{
+    margin-top:1rem; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  }
+
+  .cs-btn, a.cs-btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    -webkit-appearance:none; appearance:none;
+    height: 25px;                     /* одинаковая высота */
+    padding: 5 16px;
+    margin: 5px;
+    border-radius:6px; border:1px solid #2c4f63;
+    background:#417690; color:#fff !important; font-size:14px; line-height:1;
+    font-weight:500; text-decoration:none !important; cursor:pointer;
+    transition:background .2s ease, border-color .2s ease, opacity .2s ease;
+    white-space:nowrap; min-width:160px !important; /* ← фикс ширины */
+    flex:0 0 auto;
+  }
+
+  .cs-btn:hover, a.cs-btn:hover{ background:#2c4f63; }
+
+  /* Серый вариант — «Отмена» */
+  .cs-btn--secondary{
+    background:#e5e7eb; color:#111827 !important; border-color:#c7cdd3;
+  }
+  .cs-btn--secondary:hover{ background:#d6dbe0; }
+
+  /* Кастомная «Выбрать файл» */
+  .cs-file input[type="file"]{ display:none; }
+  .cs-file-name{ font-size:13px; color:#de1f09; }
+
+  .cs-btn[disabled]{ opacity:.6; cursor:not-allowed; }
+</style>
+
+
+<h1>Импорт расписаний трансферов</h1>
+<p>Ожидаемые колонки:
+  <code>Номер услуги, Отель, Дата отъезда, Тип трансфера, Фамилия, Имя, Дата рождения</code>
+</p>
+
+<form method="post" enctype="multipart/form-data" class="cs-import-form">
+  {% csrf_token %}
+
+  <!-- Кнопка выбора файла -->
+  <label class="cs-btn cs-file">
+    Выбрать файл
+    <input id="fileInput" type="file" name="file" accept=".csv,.xlsx,.xls" required>
+  </label>
+  <span id="fileName" class="cs-file-name">Файл не выбран</span>
+
+  <!-- Кнопки действий -->
+  <button id="submitBtn" type="submit" class="cs-btn" disabled>Импортировать</button>
+  <a href="{% url 'admin:core_transferschedulegroup_changelist' %}" class="cs-btn cs-btn--secondary">Отмена</a>
+</form>
+
+<script>
+  (function(){
+    const fi = document.getElementById('fileInput');
+    const fn = document.getElementById('fileName');
+    const sb = document.getElementById('submitBtn');
+
+    fi.addEventListener('change', () => {
+      const file = fi.files && fi.files[0];
+      fn.textContent = file ? file.name : 'Файл не выбран';
+      sb.disabled = !file;
+    });
+
+    // невидимый file input доступен по Enter/Space через лейбл — всё ок с доступностью
+  })();
+</script>
 {% endblock %}

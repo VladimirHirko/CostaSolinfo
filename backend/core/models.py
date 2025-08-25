@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from django.db.models import Q, UniqueConstraint
 
 from django.utils.translation import gettext_lazy as _
 from django.conf import settings
@@ -161,7 +162,6 @@ class TransferSchedule(models.Model):
     )
     hotel = models.ForeignKey('Hotel', on_delete=models.CASCADE, verbose_name="Отель")
     departure_date = models.DateField(verbose_name="Дата выезда")
-    departure_time = models.TimeField(verbose_name="Время выезда")
     pickup_point = models.ForeignKey('PickupPoint', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Точка сбора")
     
     booking_service_number = models.CharField(
@@ -213,7 +213,13 @@ class TransferPassenger(models.Model):
     birth_date = models.DateField(null=True, blank=True, verbose_name="Дата рождения")
 
     class Meta:
-        unique_together = ('schedule', 'last_name', 'first_name')  # от дублей в одной семье
+        constraints = [
+            UniqueConstraint(
+                fields=['schedule', 'last_name', 'first_name'],
+                condition=~Q(first_name=''),
+                name='uniq_passenger_when_first_name_present',
+            )
+        ]
         ordering = ['last_name', 'first_name']
 
     def __str__(self):

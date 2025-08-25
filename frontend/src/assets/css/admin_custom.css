@@ -1,0 +1,39 @@
+/* === Импорт расписаний: приводим кнопки к единому виду === */
+/* Мягко таргетим только формы с URL, содержащим "import" */
+form[action*="import"] .cs-admin-buttons .btn,
+form[action*="import"] .cs-admin-buttons input[type="submit"],
+form[action*="import"] .cs-admin-buttons a {
+  display: inline-block;
+  padding: 8px 16px;
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  text-decoration: none;
+  border: 0;
+  transition: background .2s ease, color .2s ease, opacity .2s ease;
+}
+
+/* Синяя — «Импорт» */
+form[action*="import"] .cs-admin-buttons input[type="submit"] {
+  background: #007bff;
+  color: #fff;
+}
+form[action*="import"] .cs-admin-buttons input[type="submit"]:hover {
+  background: #0062cc;
+}
+
+/* Серая — «Отмена» (это <a>) */
+form[action*="import"] .cs-admin-buttons a {
+  background: #6c757d;
+  color: #fff !important;
+}
+form[action*="import"] .cs-admin-buttons a:hover {
+  background: #5a6268;
+}
+
+/* Небольшой зазор между кнопками */
+form[action*="import"] .cs-admin-buttons > * + * {
+  margin-left: 8px;
+}

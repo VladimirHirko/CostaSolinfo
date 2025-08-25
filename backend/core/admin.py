@@ -727,8 +727,19 @@ class TransferScheduleGroupAdmin(admin.ModelAdmin):
     def _parse_date(self, v):
         if v is None or str(v).strip() == "":
             return None
+        # pandas.Timestamp или datetime
         if isinstance(v, datetime):
             return v.date()
+        # excel-числа (встречается в xlsx)
+        if isinstance(v, (int, float)):
+            try:
+                # pandas есть выше; но тут сделаем без него:
+                # 1899-12-30 — базовая дата Excel (Windows)
+                base = datetime(1899, 12, 30)
+                return (base + timedelta(days=int(v))).date()
+            except Exception:
+                pass
+        # строки в разных форматах
         s = str(v).strip()
         for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d.%m.%Y"):
             try:

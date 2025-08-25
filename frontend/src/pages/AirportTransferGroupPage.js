@@ -82,6 +82,9 @@ const AirportTransferGroupPage = () => {
   // 🔹 Отправка формы
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setInquirySuccessMessage('');
+    setInquiryError('');
+
     if (!hotelId || !date) {
       setError(t('please_fill_all_fields'));
       return;
@@ -154,7 +157,7 @@ const AirportTransferGroupPage = () => {
   const handleInquirySubmit = async (e) => {
     e.preventDefault();
 
-    if (!inquiryLastName || !inquiryHotel || !inquiryDate || !inquiryEmail) {
+    if (!inquiryLastName || !inquiryHotelId || !inquiryDate || !inquiryEmail) {
       setError(t('please_fill_all_fields'));
       return;
     }
