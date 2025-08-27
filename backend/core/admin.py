@@ -21,7 +21,7 @@ from .models import (
     TransferChangeLog, PrivacyPolicy, Homepage, InfoMeetingScheduleItem,
     ExcursionPickupPoint, ExcursionRegionPrice, ExcursionContentBlock, 
     ExcursionPickupReference, ExcursionImage, Question, TeamMember,
-    TransferPageContentBlock, TransferPassenger
+    TransferPageContentBlock, TransferPassenger, ExcursionZoneTime
 )
 from leaflet.admin import LeafletGeoAdmin
 from leaflet.forms.widgets import LeafletWidget
@@ -32,12 +32,14 @@ from django.urls import path
 from django.utils.safestring import mark_safe
 from django.utils.html import format_html
 from django.utils.timezone import now, localtime
-from django.utils.translation import activate, deactivate_all, gettext as _
+from django.utils.translation import activate, deactivate_all, gettext as _, gettext_lazy as _
 from core.utils import send_html_email, send_answer_notification
 from .forms import ExcursionAdminForm, BulkTransferScheduleForm, ExcursionPickupPointForm
 
 import io, csv
-from datetime import datetime
+from datetime import datetime, time
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 try:
     import pandas as pd
@@ -238,6 +240,12 @@ class PickupPointInline(admin.TabularInline):
     verbose_name_plural = "Точки сбора"
 
 
+class AssignPickupRefForm(forms.Form):
+    pickup_ref = forms.ModelChoiceField(
+        queryset=ExcursionPickupReference.objects.all().order_by('locality','name'),
+        label="Точка сбора"
+    )
+
 # Админка отели
 @admin.register(Hotel)
 class HotelAdmin(admin.ModelAdmin):
@@ -245,6 +253,39 @@ class HotelAdmin(admin.ModelAdmin):
     fields = ('name', 'region', 'latitude', 'longitude')  # ❗ pickup_point убираем
     inlines = [PickupPointInline, InfoMeetingScheduleInline]  # 🆕 добавлен Inline
     readonly_fields = ()
+
+    actions = ['assign_pickup_reference']
+
+    def assign_pickup_reference(self, request, queryset):
+        if 'apply' in request.POST:
+            form = AssignPickupRefForm(request.POST)
+            if form.is_valid():
+                ref = form.cleaned_data['pickup_ref']
+                count = 0
+                for hotel in queryset:
+                    # создаём/обновляем ExcursionPickupPoint запись-«связку» (если нужно)
+                    ExcursionPickupPoint.objects.update_or_create(
+                        excursion=None,  # общая точка для отеля (без привязки к конкретной экскурсии)
+                        hotel=hotel,
+                        defaults={
+                            'pickup_point_name': ref.name,
+                            'latitude': ref.latitude,
+                            'longitude': ref.longitude,
+                            'pickup_point': ref,  # если хочешь связать через FK
+                        }
+                    )
+                    count += 1
+                self.message_user(request, f"Привязано отелей: {count}", level=messages.SUCCESS)
+                return
+        else:
+            form = AssignPickupRefForm()
+
+        return render(request, 'admin/excursions/assign_pickup_ref.html', {
+            'hotels': queryset,
+            'form': form,
+            'title': 'Привязать выбранные отели к точке сбора',
+        })
+    assign_pickup_reference.short_description = "Привязать к точке сбора"
 
     class Media:
         js = (
@@ -324,8 +365,218 @@ class ExcursionPickupInline(admin.TabularInline):
 
 @admin.register(ExcursionPickupReference)
 class ExcursionPickupReferenceAdmin(admin.ModelAdmin):
-    search_fields = ['name']
-    list_display = ['name', 'latitude', 'longitude', 'default_time']
+    search_fields = ['name', 'locality']
+    list_display = ['name', 'locality', 'direction', 'latitude', 'longitude', 'default_time']
+    list_filter = ['direction', 'locality']
+
+    change_list_template = "admin/excursions/import_pickups_change_list.html"
+
+    # ✅ map_block должен быть readonly
+    readonly_fields = ('map_block',)
+    fields = ('name','direction','locality','default_time','latitude','longitude','map_block')
+
+    def map_block(self, obj=None):
+        return mark_safe(f"""
+        <div style="margin-top:10px">
+          <h3>Укажите координаты на карте</h3>
+          <div id="map" style="height: 400px; border:1px solid #ccc;"></div>
+          <script>
+            document.addEventListener("DOMContentLoaded", function(){{
+              var latInput = document.getElementById('id_latitude');
+              var lngInput = document.getElementById('id_longitude');
+              var lat = parseFloat(latInput.value) || 36.595;
+              var lng = parseFloat(lngInput.value) || -4.537;
+              var map = L.map('map').setView([lat, lng], 12);
+              L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+                attribution: '© OpenStreetMap'
+              }}).addTo(map);
+              var marker = L.marker([lat, lng], {{draggable:true}}).addTo(map);
+              function upd(e) {{
+                var p = e.latlng || marker.getLatLng();
+                marker.setLatLng(p);
+                latInput.value = p.lat.toFixed(6);
+                lngInput.value = p.lng.toFixed(6);
+              }}
+              map.on('click', upd);
+              marker.on('dragend', upd);
+            }});
+          </script>
+        </div>
+        """)
+    map_block.short_description = "Карта"
+
+    class Media:
+        css = {'all': ['https://unpkg.com/leaflet@1.9.4/dist/leaflet.css']}
+        js = ['https://unpkg.com/leaflet@1.9.4/dist/leaflet.js']
+
+    def get_urls(self):
+        from django.urls import path
+        urls = super().get_urls()
+        # имя маршрута ОСТАЛОСЬ тем же: 'excursions_pickups_import'
+        extra = [path("import/", self.admin_site.admin_view(self.import_view), name="excursions_pickups_import")]
+        return extra + urls
+
+    def _parse_time(self, v):
+        if v is None:
+            return None
+        s = str(v).strip()
+        if not s or s in ("—", "-", "nan"):
+            return None
+        # допускаем форматы 8:15, 08:15, 8.15, 8h15
+        s = s.replace('h', ':').replace('.', ':')
+        try:
+            return datetime.strptime(s, "%H:%M").time()
+        except Exception:
+            try:
+                return datetime.strptime(s, "%H:%M:%S").time()
+            except Exception:
+                return None
+
+    def _read_excel_raw(self, fobj):
+        # читаем ЛИСТ как есть, без шапки; пустоты превращаем в ''
+        return pd.read_excel(fobj, header=None, dtype=str).fillna('')
+
+    def import_view(self, request):
+        ctx = dict(self.admin_site.each_context(request))
+        if request.method == "POST" and request.FILES.get("file"):
+            up = request.FILES["file"]
+            df = self._read_excel_raw(up)
+
+            created_refs = updated_refs = 0
+            created_times = updated_times = 0
+
+            # ---- Найдём ключевые строки
+            def find_row(mark):
+                idx = df.index[df[0].astype(str).str.contains(mark, case=False, regex=False)]
+                return int(idx[0]) if len(idx) else None
+
+            row_to_malaga   = find_row("Puntos de recogida to Malaga")
+            row_to_gibraltar= find_row("Puntos de recogida to Gibraltar")
+            row_excursiones = find_row("EXCURSIONES")
+
+            # ---- Пары колонок «Локалити | GPS» ищем по строкам-«шапкам» 1 и 2
+            # строка 1 — названия локалити, строка 2 — где вторая из пары == 'GPS - coord.'
+            def build_column_pairs():
+                pairs = []  # [(col_stop, col_gps, locality_label), ...]
+                # ищем все столбцы, где в строке 2 написано 'GPS'
+                for c in range(0, df.shape[1]):
+                    val = str(df.iloc[2, c]).strip().lower()
+                    if val.startswith("gps"):
+                        col_gps = c
+                        col_name = c - 1  # левый сосед — «Name Bus Stop»
+                        # locality берём из строки 1 в колонке col_name
+                        locality = str(df.iloc[1, col_name]).strip() or None
+                        pairs.append((col_name, col_gps, locality))
+                return pairs
+
+            col_pairs = build_column_pairs()
+
+            # ---- Парсер блока точек: берём строки между start_row и end_row
+            def parse_pickup_block(start_row, end_row, direction_key):
+                nonlocal created_refs, updated_refs
+                if start_row is None:
+                    return
+                # данные начинаются сразу после маркера
+                r = start_row + 1
+                while r < df.shape[0] and (end_row is None or r < end_row):
+                    empty_row = True
+                    for col_name, col_gps, locality in col_pairs:
+                        stop_name = str(df.iloc[r, col_name]).strip()
+                        gps = str(df.iloc[r, col_gps]).strip()
+                        if stop_name:
+                            empty_row = False
+                            lat = lng = None
+                            if gps and ("," in gps):
+                                # допускаем: "36.721, -4.421" или "36,721 , -4,421"
+                                left, right = [p.strip() for p in gps.split(",", 1)]
+                                try:
+                                    lat = float(left.replace(",", "."))
+                                    lng = float(right.replace(",", "."))
+                                except Exception:
+                                    lat = lng = None
+
+                            ref, created = ExcursionPickupReference.objects.get_or_create(
+                                name=stop_name,
+                                direction=("GIB_TO_MALAGA" if direction_key == "to_malaga" else "MALAGA_TO_GIB"),
+                                locality=locality,
+                                defaults=dict(latitude=lat, longitude=lng)
+                            )
+                            if created:
+                                created_refs += 1
+                            else:
+                                changed = False
+                                if lat is not None and (ref.latitude != lat):
+                                    ref.latitude = lat; changed = True
+                                if lng is not None and (ref.longitude != lng):
+                                    ref.longitude = lng; changed = True
+                                if changed:
+                                    ref.save(update_fields=["latitude", "longitude"])
+                                    updated_refs += 1
+
+                    # если строка вообще пустая для всех пар — можно завершать блок,
+                    # но надёжнее идти до end_row
+                    r += 1
+
+            # границы двух блоков:
+            #   [после 'to Malaga'; до 'to Gibraltar')
+            #   [после 'to Gibraltar'; до 'EXCURSIONES')
+            parse_pickup_block(row_to_malaga, row_to_gibraltar, direction_key="to_malaga")
+            parse_pickup_block(row_to_gibraltar, row_excursiones, direction_key="to_gibraltar")
+
+            # ---- Таблица EXCURSIONES: зоны берём из САМОЙ ВЕРХНЕЙ строки (0)
+            if row_excursiones is not None:
+                zone_cols = []
+                for c in range(1, df.shape[1]):  # начиная со 2-го столбца
+                    label = str(df.iloc[0, c]).strip()
+                    if label:
+                        zone_cols.append((c, label))
+
+                r = row_excursiones + 1
+                while r < df.shape[0]:
+                    ex_name = str(df.iloc[r, 0]).strip()
+                    if not ex_name:
+                        r += 1
+                        continue
+                    up = ex_name.upper()
+                    if up.startswith("OBSERV") or up.startswith("NOTA"):
+                        break
+
+                    # ищем экскурсию (можно расширить маппингом)
+                    ex = Excursion.objects.filter(title__iexact=ex_name).first() \
+                         or Excursion.objects.filter(title__icontains=ex_name[:10]).first()
+
+                    if ex:
+                        direction = ex.direction  # 'MALAGA_TO_GIB' или 'GIB_TO_MALAGA'
+                        for c, zone_name in zone_cols:
+                            t = self._parse_time(df.iloc[r, c])
+                            if not t:
+                                continue
+                            obj, created = ExcursionZoneTime.objects.get_or_create(
+                                excursion=ex, zone=zone_name, direction=direction,
+                                defaults=dict(time=t)
+                            )
+                            if created:
+                                created_times += 1
+                            elif obj.time != t:
+                                obj.time = t
+                                obj.save(update_fields=["time"])
+                                updated_times += 1
+
+                    r += 1
+
+            messages.success(
+                request,
+                f"Готово: Точки — создано {created_refs}, обновлено {updated_refs}. "
+                f"Времена — создано {created_times}, обновлено {updated_times}."
+            )
+            return redirect("admin:core_excursionpickupreference_changelist")
+
+        # GET — форма
+        ctx["title"] = "Импорт точек и базовых времен"
+        return render(request, "admin/excursions/import_pickups.html", ctx)
+
+
+
 
 
 class ExcursionPickupPointForm(forms.ModelForm):

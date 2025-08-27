@@ -1,0 +1,7 @@
+{% extends "admin/change_list.html" %}
+{% block object-tools-items %}
+  {{ block.super }}
+  <li>
+    <a href="{% url 'admin:excursions_pickups_import' %}" class="button">Импорт</a>
+  </li>
+{% endblock %}

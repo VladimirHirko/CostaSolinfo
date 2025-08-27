@@ -1,0 +1,10 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+  <h1>{{ title }}</h1>
+  <form method="post" style="margin-top:1rem">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" name="apply" class="grp-button">Применить</button>
+    <a href="{% url 'admin:core_hotel_changelist' %}" class="grp-button grp-button--secondary">Отмена</a>
+  </form>
+{% endblock %}

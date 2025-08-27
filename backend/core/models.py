@@ -14,7 +14,11 @@ TRANSFER_TYPE_CHOICES = [
         ('group', 'Групповой'),
         ('private', 'Индивидуальный'),
     ]
-
+    
+EXCURSION_DIRECTION_CHOICES = [
+    ('MALAGA_TO_GIB', 'От Малаги к Гибралтару'),
+    ('GIB_TO_MALAGA', 'От Гибралтара к Малаге'),
+]
 
 # Модель баннеров на сайте
 class PageBanner(models.Model):
@@ -495,6 +499,10 @@ class Excursion(models.Model):
         ('MALAGA_TO_GIB', 'От Малаги к Гибралтару'),
         ('GIB_TO_MALAGA', 'От Гибралтара к Малаге'),
     ]
+    EXCURSION_DIRECTION_CHOICES = [
+        ('MALAGA_TO_GIB', 'От Малаги к Гибралтару'),
+        ('GIB_TO_MALAGA', 'От Гибралтара к Малаге'),
+    ]
     direction = models.CharField(
         max_length=20,
         choices=DIRECTION_CHOICES,
@@ -623,13 +631,41 @@ class ExcursionPickupReference(models.Model):
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     default_time = models.TimeField(null=True, blank=True, verbose_name="Время по умолчанию")
 
+    # 🔹 новые:
+    direction = models.CharField(
+        max_length=16, choices=EXCURSION_DIRECTION_CHOICES, default='MALAGA_TO_GIB',
+        verbose_name="Направление"
+    )
+    locality = models.CharField(
+        max_length=100, blank=True, null=True, verbose_name="Локация (Malaga, Torremolinos Centro и т.п.)"
+    )
+
     class Meta:
         verbose_name = "Справочник точек сбора"
         verbose_name_plural = "Справочник точек сбора"
+        unique_together = (('name', 'direction', 'locality'),)  # чтобы не плодить дубликаты
 
     def __str__(self):
-        return self.name
+        return f"{self.name} [{self.get_direction_display()}]"
 
+# === НОВАЯ МОДЕЛЬ: базовые времена по зонам для каждой экскурсии ===
+class ExcursionZoneTime(models.Model):
+    excursion = models.ForeignKey(
+        'Excursion', on_delete=models.CASCADE, related_name='zone_times', verbose_name="Экскурсия"
+    )
+    zone = models.CharField(max_length=64, verbose_name="Зона/Локация")  # напр. 'Malaga', 'Torremolinos Centro'
+    time = models.TimeField(null=True, blank=True, verbose_name="Время сбора")
+    direction = models.CharField(
+        max_length=16, choices=EXCURSION_DIRECTION_CHOICES, default='MALAGA_TO_GIB', verbose_name="Направление"
+    )
+
+    class Meta:
+        unique_together = (('excursion', 'zone', 'direction'),)
+        verbose_name = "Базовое время по зоне"
+        verbose_name_plural = "Базовые времена по зонам"
+
+    def __str__(self):
+        return f"{self.excursion.title} — {self.zone} ({self.get_direction_display()})"
 
 
 class ExcursionContentBlock(models.Model):

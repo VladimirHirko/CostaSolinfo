@@ -1,0 +1,30 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+  <h1>Импорт точек сбора и базовых времен экскурсий</h1>
+  <p>Загрузите Excel в формате, как в вашем файле «GPS Time db.xlsx».</p>
+
+  <form method="post" enctype="multipart/form-data" class="cs-import-form">
+    {% csrf_token %}
+    <input type="file" name="file" accept=".xlsx,.xls" required>
+    <button type="submit" class="grp-button">Импортировать</button>
+    <a href="{% url 'admin:core_excursionpickupreference_changelist' %}" class="grp-button grp-button--secondary">Отмена</a>
+  </form>
+{% endblock %}
+
+{% block extrastyle %}
+<style>
+  .cs-import-form{ margin-top:1rem; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .grp-button, a.grp-button{
+    display:inline-flex; align-items:center; justify-content:center;
+    -webkit-appearance:none; appearance:none;
+    padding:8px 16px; border-radius:6px; border:1px solid #2c4f63;
+    background:#417690; color:#fff !important; font-size:14px; line-height:1.25;
+    font-weight:500; text-decoration:none !important; cursor:pointer;
+    transition:background .2s ease, border-color .2s ease, opacity .2s ease;
+    white-space:nowrap; min-width:160px;
+  }
+  .grp-button:hover{ background:#2c4f63; }
+  .grp-button--secondary{ background:#e5e7eb; color:#111827 !important; border-color:#c7cdd3; }
+  .grp-button--secondary:hover{ background:#d6dbe0; }
+</style>
+{% endblock %}
