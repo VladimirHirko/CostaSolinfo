@@ -1,0 +1,49 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+  <h1>{{ title }}</h1>
+
+  <form method="post" enctype="multipart/form-data" style="margin:1rem 0;">
+    {% csrf_token %}
+    <div class="form-row">
+      {{ form.as_p }}
+    </div>
+    <button class="button default" type="submit">Загрузить</button>
+  </form>
+
+  {% if report %}
+    <h3>Результат</h3>
+    <p>
+      {% if report.dry_run %}<strong>[DRY RUN]</strong>{% endif %}
+      Создано: {{ report.created }} |
+      Обновлено: {{ report.updated }} |
+      Пропущено: {{ report.skipped|length }}
+    </p>
+
+    {% if report.skipped %}
+      <details style="margin:1rem 0;">
+        <summary>Показать пропуски ({{ report.skipped|length }})</summary>
+        <table class="adminlist">
+          <thead><tr><th>Экскурсия</th><th>Направление</th><th>Зона</th><th>Причина</th></tr></thead>
+          <tbody>
+          {% for exc, direction, zone, reason in report.skipped %}
+            <tr><td>{{ exc }}</td><td>{{ direction }}</td><td>{{ zone }}</td><td>{{ reason }}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </details>
+    {% endif %}
+
+    {% if report.points_upserted %}
+      <details>
+        <summary>Обновлённые точки (справочник)</summary>
+        <ul>
+          {% for name, status in report.points_upserted %}
+            <li>{{ name }} — {{ status }}</li>
+          {% endfor %}
+        </ul>
+      </details>
+    {% endif %}
+  {% endif %}
+{% endblock %}

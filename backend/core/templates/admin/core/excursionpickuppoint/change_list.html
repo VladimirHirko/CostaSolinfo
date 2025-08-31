@@ -1,0 +1,8 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls %}
+
+{% block object-tools-items %}
+  {{ block.super }}
+  <li><a href="{% url 'admin:excursion-pickup-import' %}" class="historylink">Импорт Excel</a></li>
+  <li><a href="{% url 'admin:excursion-pickup-template' %}" class="addlink">Скачать шаблон</a></li>
+{% endblock %}

@@ -380,6 +380,14 @@ class Hotel(models.Model):
         verbose_name="Точка сбора"
     )
 
+    # НОВОЕ: временная зона экскурсий
+    excursion_zone = models.ForeignKey(
+        'core.ExcursionZone', 
+        on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='hotels',
+        verbose_name="Временная зона (экскурсии)"
+    )
+
     def __str__(self):
         return self.name
 
@@ -387,6 +395,19 @@ class Hotel(models.Model):
         ordering = ['name']  # по имени
         verbose_name = "Отель"
         verbose_name_plural = "Отели"
+
+class ExcursionZone(models.Model):
+    name = models.CharField(max_length=64, unique=True, verbose_name="Временная зона (экскурсии)")
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Временная зона (экскурсии)"
+        verbose_name_plural = "Временные зоны (экскурсии)"
+
+    def __str__(self):
+        return self.name
+
 
 class TransferScheduleItem(models.Model):
     group = models.ForeignKey('TransferScheduleGroup', on_delete=models.CASCADE)
@@ -478,6 +499,30 @@ class PrivateTransferPickupPoint(PickupPoint):
         verbose_name_plural = "Точки сбора для индивидуального трансфера"
 
 
+class HotelExcursion(models.Model):
+    hotel = models.ForeignKey(
+        'core.Hotel',                 # ← строковая ссылка
+        on_delete=models.CASCADE,
+        related_name='excursion_flags',
+        verbose_name='Отель',
+    )
+    excursion = models.ForeignKey(
+        'core.Excursion',             # ← строковая ссылка
+        on_delete=models.CASCADE,
+        related_name='hotel_flags',
+        verbose_name='Экскурсия',
+    )
+    is_active = models.BooleanField(default=True, verbose_name='Доступна из отеля')
+
+    class Meta:
+        unique_together = ('hotel', 'excursion')
+        verbose_name = 'Доступность экскурсии из отеля'
+        verbose_name_plural = 'Доступность экскурсий из отеля'
+
+    def __str__(self):
+        return f'{self.hotel} ↔ {self.excursion} ({ "ON" if self.is_active else "OFF"})'
+
+
 
 # Экскурсии
 class Excursion(models.Model):
@@ -553,68 +598,148 @@ class ExcursionRegionPrice(models.Model):
 
 
 class ExcursionPickupPoint(models.Model):
-    excursion = models.ForeignKey('Excursion', on_delete=models.CASCADE)
-    hotel = models.ForeignKey('Hotel', on_delete=models.CASCADE)
-    copy_from = models.ForeignKey(  # 👈 новое поле
+    excursion = models.ForeignKey(
+        'core.Excursion',
+        on_delete=models.CASCADE,
+        related_name='pickup_points',
+        verbose_name='Экскурсия',
+    )
+
+    # может быть null на переходный период; уникальность ниже учитывает это условием
+    hotel = models.ForeignKey(
+        'core.Hotel',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='excursion_pickups',
+        verbose_name='Отель',
+    )
+
+    # — вспомогательные ссылки для автозаполнения полей точки —
+    copy_from = models.ForeignKey(
         'self',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='clones',
-        verbose_name="Использовать готовую точку"
+        verbose_name='Использовать готовую точку',
     )
-    pickup_reference = models.ForeignKey(  # 👈 новое поле
-        'ExcursionPickupReference',
+
+    pickup_reference = models.ForeignKey(
+        'core.ExcursionPickupReference',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='excursion_pickups',
-        verbose_name="Ссылка на готовую точку"
+        verbose_name='Справочник точки',
     )
-    pickup_point = models.ForeignKey('PickupPoint', on_delete=models.SET_NULL, null=True, blank=True, related_name="excursion_pickups", verbose_name="Точка сбора")
 
-    pickup_point_name = models.CharField(max_length=200, verbose_name="Название точки сбора", blank=True)
-    pickup_time = models.TimeField(verbose_name="Время отправления", null=True, blank=True)
-    
-    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Широта")
-    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Долгота")
+    pickup_point = models.ForeignKey(
+        'core.PickupPoint',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='excursion_pickups',
+        verbose_name='Точка сбора',
+    )
+
+    pickup_point_name = models.CharField(
+        max_length=200,
+        verbose_name="Название точки сбора",
+        blank=True,
+    )
+    pickup_time = models.TimeField(
+        verbose_name="Время отправления",
+        null=True,
+        blank=True,
+    )
+
+    latitude = models.DecimalField(
+        max_digits=9, decimal_places=6,
+        null=True, blank=True, verbose_name="Широта",
+    )
+    longitude = models.DecimalField(
+        max_digits=9, decimal_places=6,
+        null=True, blank=True, verbose_name="Долгота",
+    )
 
     def save(self, *args, **kwargs):
-        if self.pickup_reference:
-            self.pickup_point_name = self.pickup_reference.name
-            self.latitude = self.pickup_reference.latitude
-            self.longitude = self.pickup_reference.longitude
-            if not self.pickup_time:
-                self.pickup_time = self.pickup_reference.default_time
+        """
+        Приоритет автозаполнения:
+        1) copy_from      → копируем name/lat/lng (+время, если у нас его нет)
+        2) pickup_reference → берём name/lat/lng (+default_time, если времени нет)
+        3) pickup_point   → если name/coords не заданы, подставляем из FK
+        """
+        if self.copy_from_id:
+            src = self.copy_from
+            if src:
+                self.pickup_point_name = src.pickup_point_name
+                self.latitude = src.latitude
+                self.longitude = src.longitude
+                if not self.pickup_time:
+                    self.pickup_time = src.pickup_time
+
+        elif self.pickup_reference_id:
+            ref = self.pickup_reference
+            if ref:
+                self.pickup_point_name = ref.name
+                self.latitude = ref.latitude
+                self.longitude = ref.longitude
+                if not self.pickup_time and getattr(ref, "default_time", None):
+                    self.pickup_time = ref.default_time
+
+        elif self.pickup_point_id:
+            pp = self.pickup_point
+            if pp:
+                if not self.pickup_point_name:
+                    self.pickup_point_name = getattr(pp, "name", "") or self.pickup_point_name
+                if self.latitude is None:
+                    self.latitude = getattr(pp, "latitude", None)
+                if self.longitude is None:
+                    self.longitude = getattr(pp, "longitude", None)
+
         super().save(*args, **kwargs)
 
     @property
     def direction(self):
-        return self.excursion.direction
+        return getattr(self.excursion, "direction", None)
 
     @property
     def price_adult(self):
-        region = self.hotel.region
-        if not region:
+        hotel = getattr(self, "hotel", None)
+        if not hotel or not hotel.region:
             return None
-        price = self.excursion.region_prices.filter(region=region).first()
-        return price.price_adult if price else None
+        price = self.excursion.region_prices.filter(region=hotel.region).first()
+        return getattr(price, "price_adult", None)
 
     @property
     def price_child(self):
-        region = self.hotel.region
-        if not region:
+        hotel = getattr(self, "hotel", None)
+        if not hotel or not hotel.region:
             return None
-        price = self.excursion.region_prices.filter(region=region).first()
-        return price.price_child if price else None
+        price = self.excursion.region_prices.filter(region=hotel.region).first()
+        return getattr(price, "price_child", None)
 
     class Meta:
-        unique_together = ('excursion', 'hotel')
         verbose_name = "Точка сбора экскурсии"
         verbose_name_plural = "Точки сбора экскурсий"
+        ordering = ["pickup_time", "hotel__name", "pickup_point_name"]  # ← добавили
+        unique_together = ('excursion', 'hotel')
+        constraints = [
+            # уникальность только когда hotel не NULL — позволит хранить временные «осиротевшие» записи
+            models.UniqueConstraint(
+                fields=['excursion', 'hotel'],
+                name='uniq_excursion_hotel',
+                condition=Q(hotel__isnull=False),
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['excursion', 'pickup_point_name'], name='idx_excursion_pickupname'),
+        ]
 
     def __str__(self):
-        return f"{self.pickup_point_name} ({self.hotel.name if self.hotel else 'Без отеля'})"
+        hotel_name = self.hotel.name if self.hotel_id else 'Без отеля'
+        return f"{self.pickup_point_name or '—'} ({hotel_name})"
 
 # core/models.py
 class ExcursionPickupReference(models.Model):

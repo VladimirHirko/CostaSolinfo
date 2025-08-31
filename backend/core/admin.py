@@ -1,13 +1,14 @@
 import pandas as pd
 import datetime
+import math
+from django.db.models import Count, F 
 from django.db import models, transaction
 from django.conf import settings
-
+from math import radians, sin, cos, sqrt, atan2, asin
 from django.contrib import admin, messages
 from django.core.mail import EmailMultiAlternatives, send_mail
 from django.shortcuts import render, redirect
 from django.http import HttpResponseRedirect, HttpResponse
-from django.urls import reverse
 from django.template.response import TemplateResponse
 from django.template.loader import render_to_string
 from modeltranslation.admin import TranslationAdmin
@@ -21,28 +22,29 @@ from .models import (
     TransferChangeLog, PrivacyPolicy, Homepage, InfoMeetingScheduleItem,
     ExcursionPickupPoint, ExcursionRegionPrice, ExcursionContentBlock, 
     ExcursionPickupReference, ExcursionImage, Question, TeamMember,
-    TransferPageContentBlock, TransferPassenger
+    TransferPageContentBlock, TransferPassenger, HotelExcursion, ExcursionZone
 )
 from leaflet.admin import LeafletGeoAdmin
 from leaflet.forms.widgets import LeafletWidget
 from django import forms
 from ckeditor.fields import RichTextField
 from ckeditor.widgets import CKEditorWidget
-from django.urls import path
+from django.urls import path, reverse
 from django.utils.safestring import mark_safe
 from django.utils.html import format_html
-from django.utils.timezone import now, localtime
+from django.utils.timezone import now, localtime, make_aware
 from django.utils.translation import activate, deactivate_all, gettext as _
 from core.utils import send_html_email, send_answer_notification
 from .forms import ExcursionAdminForm, BulkTransferScheduleForm, ExcursionPickupPointForm
 
 import io, csv
-from datetime import datetime
+from datetime import datetime, time
 
 try:
     import pandas as pd
 except Exception:
     pd = None
+
 
 
 # Баннеры на старницах
@@ -238,12 +240,27 @@ class PickupPointInline(admin.TabularInline):
     verbose_name_plural = "Точки сбора"
 
 
+@admin.register(ExcursionZone)
+class ExcursionZoneAdmin(admin.ModelAdmin):
+    list_display = ("name", "is_active")
+    search_fields = ("name",)
+    list_editable = ("is_active",)
+
+
+class HotelExcursionInline(admin.TabularInline):
+    model = HotelExcursion
+    extra = 0
+    fields = ('excursion', 'is_active')
+    autocomplete_fields = ('excursion',)
+
 # Админка отели
 @admin.register(Hotel)
 class HotelAdmin(admin.ModelAdmin):
+    list_display = ("name", "region", "excursion_zone")
+    list_filter  = ("region", "excursion_zone")
     search_fields = ['name']
-    fields = ('name', 'region', 'latitude', 'longitude')  # ❗ pickup_point убираем
-    inlines = [PickupPointInline, InfoMeetingScheduleInline]  # 🆕 добавлен Inline
+    fields = ("name", "region", "excursion_zone", "latitude", "longitude")  # ❗ pickup_point убираем
+    inlines = [PickupPointInline, InfoMeetingScheduleInline, HotelExcursionInline]  # 🆕 добавлен Inline
     readonly_fields = ()
 
     class Media:
@@ -290,6 +307,12 @@ class HotelAdmin(admin.ModelAdmin):
         ''')
         return super().changeform_view(request, object_id, form_url, extra_context=extra_context)
 
+class ExcursionHotelInline(admin.TabularInline):
+    model = HotelExcursion
+    extra = 0
+    fields = ('hotel', 'is_active')
+    autocomplete_fields = ('hotel',)
+
 # Админка для регионов
 @admin.register(Region)
 class RegionAdmin(admin.ModelAdmin):
@@ -309,6 +332,20 @@ class ExcursionPickupInline(admin.TabularInline):
         'pickup_point_name', 'latitude', 'longitude',
         'get_direction', 'get_price_adult', 'get_price_child'
     )
+    # базовая сортировка (на случай старых версий Django)
+    ordering = ("pickup_time", "hotel__name", "pickup_point_name")
+
+    # корректно уводим пустые времена вниз (Django 3.1+)
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        try:
+            return qs.order_by(
+                F("pickup_time").asc(nulls_last=True),
+                "hotel__name",
+                "pickup_point_name",
+            )
+        except TypeError:
+            return qs.order_by("pickup_time", "hotel__name", "pickup_point_name")
 
     def get_direction(self, obj):
         return obj.direction
@@ -332,6 +369,7 @@ class ExcursionPickupPointForm(forms.ModelForm):
     class Meta:
         model = ExcursionPickupPoint
         fields = '__all__'
+        ordering = ["pickup_time", "hotel__name", "pickup_point_name"]
 
     def clean(self):
         cleaned_data = super().clean()
@@ -362,13 +400,59 @@ class ExcursionPickupPointForm(forms.ModelForm):
         return cleaned_data
 
 
+
+@admin.action(description="Санитарная уборка: удалить без отеля и склеить дубли")
+def cleanup_pickups(modeladmin, request, queryset):
+    # игнорируем queryset — чистим глобально
+    orph = ExcursionPickupPoint.objects.filter(hotel__isnull=True)
+    n_orph = orph.count()
+    orph.delete()
+
+    dups = (ExcursionPickupPoint.objects
+            .values('excursion_id', 'hotel_id')
+            .annotate(c=Count('id')).filter(c__gt=1))
+    removed = 0
+    for row in dups:
+        items = list(ExcursionPickupPoint.objects
+                     .filter(excursion_id=row['excursion_id'], hotel_id=row['hotel_id'])
+                     .order_by('-pickup_time', '-id'))
+        keep = items[0]
+        for x in items[1:]:
+            updated = False
+            if not keep.pickup_time and x.pickup_time:
+                keep.pickup_time = x.pickup_time; updated = True
+            if keep.latitude is None and x.latitude is not None:
+                keep.latitude = x.latitude; updated = True
+            if keep.longitude is None and x.longitude is not None:
+                keep.longitude = x.longitude; updated = True
+            if not keep.pickup_point_name and x.pickup_point_name:
+                keep.pickup_point_name = x.pickup_point_name; updated = True
+            if updated:
+                keep.save()
+            x.delete()
+            removed += 1
+
+    modeladmin.message_user(
+        request, f"Удалено без отеля: {n_orph}, удалено дублей: {removed}"
+    )
+
 @admin.register(ExcursionPickupPoint)
 class ExcursionPickupPointAdmin(admin.ModelAdmin):
+    change_list_template = "admin/core/excursionpickuppoint/change_list.html"  # ← добавили
     form = ExcursionPickupPointForm
     search_fields = ['pickup_point_name']
     list_display = ('id', 'get_hotel', 'get_excursion', 'pickup_time', 'get_region')
     fields = ('excursion', 'hotel', 'pickup_point_name', 'pickup_time', 'latitude', 'longitude', 'map_block')
     readonly_fields = ('map_block',)
+    actions = [cleanup_pickups]
+
+    # По желанию — скрыть «без отеля» в списке:
+    def get_queryset(self, request):
+        qs = super().get_queryset(request).filter(hotel__isnull=False)
+        try:
+            return qs.order_by(F("pickup_time").asc(nulls_last=True), "hotel__name")
+        except TypeError:
+            return qs.order_by("pickup_time", "hotel__name")
 
     def get_hotel(self, obj):
         return obj.hotel.name if obj.hotel else "—"
@@ -424,6 +508,16 @@ class ExcursionPickupPointAdmin(admin.ModelAdmin):
         }
         js = ["https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"]
 
+    # 🔹 ДОБАВЛЯЕМ ИМПОРТ и скачку шаблона
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path("import/", self.admin_site.admin_view(import_excursion_pickups_view), name="excursion-pickup-import"),
+            path("download-template/", self.admin_site.admin_view(download_excursion_template_view), name="excursion-pickup-template"),
+        ]
+        return custom + urls
+
+
 
 class ExcursionRegionPriceInline(admin.TabularInline):
     model = ExcursionRegionPrice
@@ -477,7 +571,7 @@ class ExcursionAdmin(admin.ModelAdmin):
     list_display = ('title', 'direction', 'duration', 'is_active')
     list_filter = ('direction',)
     search_fields = ('title',)
-    inlines = [ExcursionRegionPriceInline, ExcursionPickupInline, ExcursionImageInline]  # 👈 Добавили регионы
+    inlines = [ExcursionRegionPriceInline, ExcursionPickupInline, ExcursionImageInline, ExcursionHotelInline]  # 👈 Добавили регионы
 
     fieldsets = (
         (None, {
@@ -1187,5 +1281,446 @@ class TransferInquiryAdmin(admin.ModelAdmin):
 
 
 
+
+
+# ------- Форма загрузки -------
+class ExcursionPickupImportForm(forms.Form):
+    excel_file = forms.FileField(label="Excel (pickup_points + excursion_times)")
+    dry_run = forms.BooleanField(label="Только проверить (без сохранения)", required=False, initial=False)
+
+# ------- Утилиты -------
+def _norm(s):
+    if s is None:
+        return ""
+    if isinstance(s, str):
+        return s.strip()
+    return str(s).strip()
+
+def _parse_time(val):
+    """Поддержка Excel-времени, строк '08:10'/'8:10'/'08:10:00', pandas Timestamp."""
+    if val is None or (hasattr(val, "isna") and val.isna()):
+        return None
+    if isinstance(val, time):
+        return val
+    # pandas Timestamp или numpy datetime64
+    if hasattr(val, "to_pydatetime"):
+        return val.to_pydatetime().time()
+    s = str(val).strip()
+    for fmt in ("%H:%M:%S", "%H:%M"):
+        try:
+            return datetime.strptime(s, fmt).time()
+        except ValueError:
+            continue
+    # попытаемся из '8:5' привести к 08:05
+    if ":" in s:
+        hh, mm, *rest = s.split(":")
+        if hh.isdigit() and mm.isdigit():
+            try:
+                return time(hour=int(hh), minute=int(mm))
+            except Exception:
+                return None
+    return None
+
+def _to_float(v):
+    """Поддержка '36,637518', '36.637518', чисел и пустых значений."""
+    if v is None:
+        return None
+    s = str(v).strip()
+    if not s:
+        return None
+    s = s.replace(',', '.')  # КЛЮЧЕВОЕ: заменяем запятую на точку
+    try:
+        return float(s)
+    except Exception:
+        return None
+
+def _ensure_zones_exist(zone_names):
+    """Создаёт в БД отсутствующие ExcursionZone по именам из Excel."""
+    zone_names = {z for z in (zone_names or []) if z}
+    if not zone_names:
+        return 0
+    existing = set(ExcursionZone.objects.filter(name__in=zone_names)
+                   .values_list("name", flat=True))
+    to_create = [ExcursionZone(name=z) for z in zone_names if z not in existing]
+    if to_create:
+        ExcursionZone.objects.bulk_create(to_create, batch_size=200)
+    return len(to_create)
+
+# ------- helpers --------------------------------------------------------------
+
+def _haversine_km(lat1, lon1, lat2, lon2):
+    try:
+        lat1, lon1, lat2, lon2 = map(float, (lat1, lon1, lat2, lon2))
+    except (TypeError, ValueError):
+        return None
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = (math.sin(dlat/2)**2
+         + math.cos(math.radians(lat1))
+         * math.cos(math.radians(lat2))
+         * math.sin(dlon/2)**2)
+    return 2 * R * math.asin(math.sqrt(a))
+
+def _choose_hotel_point(hotel, direction, points_here, default_point, snap_km_max: float = 1.0):
+    """
+    Правила (по приоритету):
+      1) Если у отеля есть pickup_point И его имя есть в points_here -> берём его.
+      2) Если в points_here есть точка с именем отеля -> берём её.
+      3) Если есть координаты отеля и точек -> берём ближайшую.
+         Если ближайшая дальше snap_km_max и в зоне >1 точки — возвращаем None (требуется ручная проверка).
+      4) Если в зоне ровно 1 точка — берём её, иначе -> None.
+    """
+    zone_names_norm = {_norm(p.get("name")) for p in points_here if p.get("name")}
+    points_by_name = {_norm(p.get("name")): p for p in points_here if p.get("name")}
+
+    # 1) собственная точка у отеля, если она действительно есть в этой зоне/направлении
+    hotel_pp = getattr(hotel, "pickup_point", None)
+    if getattr(hotel_pp, "name", None):
+        pp_norm = _norm(hotel_pp.name)
+        if pp_norm in zone_names_norm:
+            return {
+                "name": hotel_pp.name,
+                "latitude": getattr(hotel_pp, "latitude", None),
+                "longitude": getattr(hotel_pp, "longitude", None),
+            }
+
+    # 2) совпадение по имени
+    hotel_name_norm = _norm(getattr(hotel, "name", None))
+    if hotel_name_norm and hotel_name_norm in points_by_name:
+        return points_by_name[hotel_name_norm]
+
+    # 3) ближайшая по координатам
+    best = None
+    best_d = None
+    if hotel.latitude is not None and hotel.longitude is not None:
+        for p in points_here:
+            lat = p.get("latitude"); lng = p.get("longitude")
+            if lat is None or lng is None:
+                continue
+            d = _haversine_km(hotel.latitude, hotel.longitude, lat, lng)
+            if d is None:
+                continue
+            if best_d is None or d < best_d:
+                best, best_d = p, d
+    if best is not None:
+        # если далеко от отеля — считаем назначение сомнительным
+        if best_d is not None and best_d > snap_km_max and len(points_here) > 1:
+            return None
+        return best
+
+    # 4) фолбэк: только если точка в зоне одна
+    if len(points_here) == 1:
+        return points_here[0]
+    return None
+
+
+
+# ------- Основной импортёр: разворот на все отели временной зоны --------------
+
+def import_excursion_pickups_from_excel(file_obj, dry_run: bool = False):
+    """
+    Листы Excel:
+      - pickup_points: pickup_point_name | zone | direction | latitude | longitude
+      - excursion_times: excursion_name | zone | direction | pickup_time
+      - [опц.] hotel_overrides: hotel | zone | direction | pickup_point_name
+    """
+    xl = pd.ExcelFile(file_obj)
+
+    # === 1) Точки из справочника ===
+    if "pickup_points" not in xl.sheet_names:
+        raise ValueError("В файле нет листа 'pickup_points'.")
+    df_points = pd.read_excel(xl, sheet_name="pickup_points")
+
+    required_cols_points = {"pickup_point_name", "zone", "direction"}
+    if not required_cols_points.issubset(set(df_points.columns)):
+        raise ValueError(f"'pickup_points' должен содержать столбцы: {sorted(required_cols_points)}")
+
+    df_points["pickup_point_name"] = df_points["pickup_point_name"].map(_norm)
+    df_points["zone"] = df_points["zone"].map(_norm)
+    df_points["direction"] = df_points["direction"].map(_norm)
+
+    # широта/долгота — поддержка '36,6375'
+    for col in ("latitude", "longitude"):
+        if col in df_points.columns:
+            df_points[col] = df_points[col].apply(_to_float)
+        else:
+            df_points[col] = None
+
+    # соберём (direction, zone) -> список уникальных точек
+    points_by_zone = {}
+    upsert_points = []
+    seen = set()  # чтобы не плодить дубли в списке зоны
+
+    for _, row in df_points.iterrows():
+        name = row["pickup_point_name"]
+        if not name:
+            continue
+        direction = row["direction"] or None
+        zone = row["zone"] or None
+        lat = row.get("latitude")
+        lng = row.get("longitude")
+
+        # upsert справочника по имени
+        ref = ExcursionPickupReference.objects.filter(name=name).first()
+        created_ref = False
+        if not ref:
+            if dry_run:
+                created_ref = True
+            else:
+                ref = ExcursionPickupReference.objects.create(
+                    name=name,
+                    latitude=None if pd.isna(lat) else lat,
+                    longitude=None if pd.isna(lng) else lng,
+                    default_time=None,
+                )
+                created_ref = True
+        else:
+            if not dry_run and (pd.notna(lat) or pd.notna(lng)):
+                changed = False
+                if pd.notna(lat) and ref.latitude != lat:
+                    ref.latitude = lat; changed = True
+                if pd.notna(lng) and ref.longitude != lng:
+                    ref.longitude = lng; changed = True
+                if changed:
+                    ref.save(update_fields=["latitude", "longitude"])
+
+        upsert_points.append((name, "created" if created_ref else "updated/kept"))
+
+        key = (direction, zone)
+        payload = {
+            "name": name,
+            "latitude": None if pd.isna(lat) else lat,
+            "longitude": None if pd.isna(lng) else lng,
+        }
+        uniq_key = (key, name)
+        if uniq_key not in seen:
+            points_by_zone.setdefault(key, []).append(payload)
+            seen.add(uniq_key)
+
+    # === 1.5) Времена (и динамические зоны) ===
+    if "excursion_times" not in xl.sheet_names:
+        raise ValueError("В файле нет листа 'excursion_times'.")
+    df_times = pd.read_excel(xl, sheet_name="excursion_times")
+
+    required_cols_times = {"excursion_name", "zone", "direction", "pickup_time"}
+    if not required_cols_times.issubset(set(df_times.columns)):
+        raise ValueError(f"'excursion_times' должен содержать столбцы: {sorted(required_cols_times)}")
+
+    df_times["excursion_name"] = df_times["excursion_name"].map(_norm)
+    df_times["zone"] = df_times["zone"].map(_norm)
+    df_times["direction"] = df_times["direction"].map(_norm)
+
+    # создадим недостающие зоны по именам (если у вас есть ExcursionZone)
+    zone_names = set(df_points["zone"].dropna().astype(str).str.strip()) | \
+                 set(df_times["zone"].dropna().astype(str).str.strip())
+    try:
+        created_zones = 0 if dry_run else _ensure_zones_exist(zone_names)
+    except Exception:
+        created_zones = 0
+
+    # --- необязательные оверрайды (лист hotel_overrides) ---
+    hotel_override = {}
+    if "hotel_overrides" in xl.sheet_names:
+        df_ov = pd.read_excel(xl, sheet_name="hotel_overrides")
+        need = {"hotel", "zone", "direction", "pickup_point_name"}
+        if need.issubset(set(df_ov.columns)):
+            for _, r in df_ov.fillna("").iterrows():
+                h = _norm(r.get("hotel"))
+                z = _norm(r.get("zone"))
+                d = _norm(r.get("direction"))
+                p = _norm(r.get("pickup_point_name"))
+                if h and z and d and p:
+                    hotel_override[(h, z, d)] = p
+
+    # соответствия направлений Excel -> модель
+    excel2model_dir = {"to_malaga": "GIB_TO_MALAGA", "to_gibraltar": "MALAGA_TO_GIB"}
+
+    # === 2) Разворот на все отели выбранной временной зоны ===
+    created_count = 0
+    updated_count = 0
+    skipped = []
+
+    for _, row in df_times.iterrows():
+        exc_name = row["excursion_name"]
+        zone = row["zone"] or None
+        excel_dir = row["direction"] or None
+        tval = _parse_time(row["pickup_time"])
+
+        if not exc_name:
+            skipped.append((exc_name, excel_dir, zone, "empty excursion name")); continue
+        exc = Excursion.objects.filter(title=exc_name).first()
+        if not exc:
+            skipped.append((exc_name, excel_dir, zone, "excursion not found")); continue
+
+        model_dir = excel2model_dir.get(excel_dir)
+        if model_dir and getattr(exc, "direction", None) and exc.direction != model_dir:
+            skipped.append((exc_name, excel_dir, zone, "direction mismatch with excursion; used anyway"))
+
+        key = (excel_dir, zone)
+        points_here = points_by_zone.get(key) or []
+        if not points_here:
+            skipped.append((exc_name, excel_dir, zone, "no pickup points for this zone/direction")); continue
+
+        if tval is None:
+            skipped.append((exc_name, excel_dir, zone, "invalid time")); continue
+
+        # все отели временной зоны
+        try:
+            hotels = Hotel.objects.filter(excursion_zone__name=zone)
+        except Exception:
+            skipped.append((exc_name, excel_dir, zone, "no hotel 'excursion_zone' field"))
+            continue
+
+        if not hotels.exists():
+            skipped.append((exc_name, excel_dir, zone, "no hotels with this excursion zone")); continue
+
+        default_point = points_here[0]
+
+        for hotel in hotels:
+            # 0) явный оверрайд из Excel?
+            ov_name = hotel_override.get((_norm(hotel.name), zone, excel_dir))
+            if ov_name:
+                picked = next((p for p in points_here if _norm(p.get("name")) == ov_name), None)
+                if not picked:
+                    skipped.append((exc_name, excel_dir, zone,
+                                    f"override for hotel '{hotel.name}' points to unknown '{ov_name}'"))
+                    continue
+            else:
+                # выбираем корректную точку для отеля автоматически
+                picked = _choose_hotel_point(hotel, model_dir or excel_dir, points_here, default_point)
+
+            if not picked:
+                skipped.append((exc_name, excel_dir, zone,
+                                f"ambiguous for hotel '{hotel.name}': no exact/nearest match"))
+                continue
+
+            pp_name = picked["name"]
+            ref_lat = picked.get("latitude")
+            ref_lng = picked.get("longitude")
+
+            if dry_run:
+                created_count += 1
+                continue
+
+            # upsert по (excursion, hotel)
+            obj, is_created = ExcursionPickupPoint.objects.get_or_create(
+                excursion=exc,
+                hotel=hotel,
+                defaults={
+                    "pickup_point_name": pp_name,
+                    "pickup_time": tval,
+                    "latitude": ref_lat,
+                    "longitude": ref_lng,
+                },
+            )
+
+            to_update = []
+            if obj.pickup_point_name != pp_name:
+                obj.pickup_point_name = pp_name; to_update.append("pickup_point_name")
+            if obj.pickup_time != tval:
+                obj.pickup_time = tval; to_update.append("pickup_time")
+            if ref_lat is not None and getattr(obj, "latitude", None) != ref_lat:
+                obj.latitude = ref_lat; to_update.append("latitude")
+            if ref_lng is not None and getattr(obj, "longitude", None) != ref_lng:
+                obj.longitude = ref_lng; to_update.append("longitude")
+
+            if is_created:
+                created_count += 1
+            elif to_update:
+                obj.save(update_fields=list(set(to_update)))
+                updated_count += 1
+
+    if not dry_run:
+        # Удаляем «осиротевшие» записи (ранние итерации/ошибки)
+        ExcursionPickupPoint.objects.filter(hotel__isnull=True).delete()
+
+    return {
+        "points_upserted": upsert_points,
+        "created": created_count,
+        "updated": updated_count,
+        "skipped": skipped,
+        "created_zones": created_zones,
+        "dry_run": dry_run,
+    }
+
+
+# ------- Вьюха для админки -------
+def import_excursion_pickups_view(request):
+    context = {"title": "Импорт точек и времени экскурсий"}
+    if request.method == "POST":
+        form = ExcursionPickupImportForm(request.POST, request.FILES)
+        if form.is_valid():
+            f = form.cleaned_data["excel_file"]
+            dry_run = form.cleaned_data["dry_run"]
+            try:
+                report = import_excursion_pickups_from_excel(f, dry_run=dry_run)
+                # сообщения
+                msg = f"Импорт завершён. Создано: {report['created']}, обновлено: {report['updated']}, пропущено: {len(report['skipped'])}. "
+                if dry_run:
+                    msg = "[DRY RUN] " + msg
+                messages.success(request, msg)
+                # подробности в шаблоне
+                context["report"] = report
+            except Exception as e:
+                messages.error(request, f"Ошибка импорта: {e}")
+    else:
+        form = ExcursionPickupImportForm()
+    context["form"] = form
+    return render(request, "admin/core/excursions_import.html", context)
+
+
+
+
+def download_excursion_template_view(request):
+    # соберём актуальные данные из БД
+    from .models import ExcursionPickupReference, Excursion
+    points_qs = ExcursionPickupReference.objects.all().values(
+        "name", "latitude", "longitude"
+    )
+    excursions_qs = Excursion.objects.all().values("title", "direction")
+
+    # таблицы
+    df_points = pd.DataFrame(list(points_qs))
+    if not df_points.empty:
+        df_points.rename(columns={
+            "name": "pickup_point_name",
+        }, inplace=True)
+        df_points["zone"] = ""        # менеджер может заполнить руками
+        df_points["direction"] = ""   # или оставить пустым
+    else:
+        df_points = pd.DataFrame(columns=["pickup_point_name","zone","direction","latitude","longitude"])
+
+    df_times = pd.DataFrame(columns=["excursion_name","zone","direction","pickup_time"])
+    for exc in excursions_qs:
+        df_times.loc[len(df_times)] = [exc["title"], "", exc["direction"], ""]
+
+    # пишем в память
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df_points.to_excel(writer, sheet_name="pickup_points", index=False)
+        df_times.to_excel(writer, sheet_name="excursion_times", index=False)
+    output.seek(0)
+
+    # отдаём файл
+    response = HttpResponse(
+        output.read(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response['Content-Disposition'] = 'attachment; filename=excursions_template.xlsx'
+    return response
+
+
+def ensure_all_hotel_excursions(default_active=True):
+    from .models import Hotel, Excursion, HotelExcursion
+    existing = set(HotelExcursion.objects.values_list('hotel_id', 'excursion_id'))
+    to_create = []
+    for h_id in Hotel.objects.values_list('id', flat=True):
+        for e_id in Excursion.objects.values_list('id', flat=True):
+            if (h_id, e_id) not in existing:
+                to_create.append(HotelExcursion(hotel_id=h_id, excursion_id=e_id, is_active=default_active))
+    if to_create:
+        HotelExcursion.objects.bulk_create(to_create, batch_size=2000)
+    return len(to_create)
 
 

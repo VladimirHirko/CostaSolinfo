@@ -6,4 +6,6 @@ class CoreConfig(AppConfig):
     name = 'core'
 
     def ready(self):
-        import core.signals
+        # ленивое подключение, чтобы избежать круговых импортов
+        from . import signals
+        signals.connect_signals()

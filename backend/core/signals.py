@@ -1,3 +1,5 @@
+from django.apps import apps
+from django.db import transaction
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils.translation import activate, gettext as _
@@ -5,48 +7,14 @@ from django.core.mail import EmailMultiAlternatives, send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.conf import settings
-from .models import TransferNotification, TransferSchedule, TransferScheduleItem, TransferInquiry, TransferScheduleGroup
+from .models import (
+    TransferNotification, TransferSchedule, TransferScheduleItem, 
+    TransferInquiry, TransferScheduleGroup, Hotel
+)
 #from .emails import send_transfer_change_email
 
 
 
-
-
-# @receiver(pre_save, sender=TransferScheduleItem)
-# def notify_time_change(sender, instance, **kwargs):
-#     if not instance.pk:
-#         return  # новый объект, не сравниваем
-
-#     try:
-#         old_instance = TransferScheduleItem.objects.get(pk=instance.pk)
-#     except TransferScheduleItem.DoesNotExist:
-#         return
-
-#     if instance.time and old_instance.time != instance.time:
-#         # ищем туриста по фамилии, дате и отелю
-#         inquiries = TransferInquiry.objects.filter(
-#             hotel=instance.hotel,
-#             departure_date=instance.group.date,
-#             last_name__iexact=instance.tourist_last_name,
-#             replied=True
-#         )
-
-#         for inquiry in inquiries:
-#             print(f"[INFO] Отправляем уведомление {inquiry.email} об изменении времени")  # временный лог
-
-#             send_mail(
-#                 subject="Изменение времени трансфера",
-#                 message=(
-#                     f"Уважаемый(ая) {inquiry.last_name},\n\n"
-#                     f"Время вашего трансфера из отеля {instance.hotel.name} "
-#                     f"на {instance.group.date.strftime('%d.%m.%Y')} было изменено.\n"
-#                     f"Новое время выезда: {instance.time.strftime('%H:%M')}.\n\n"
-#                     f"С уважением,\nКоманда CostaSolinfo"
-#                 ),
-#                 from_email="CostaSolinfo.Malaga@gmail.com",
-#                 recipient_list=[inquiry.email],
-#                 fail_silently=False
-#             )
 
 
 @receiver(post_save, sender=TransferScheduleGroup)
@@ -144,72 +112,81 @@ def notify_transfer_group_updated(sender, instance, **kwargs):
 
 
 
-# @receiver(pre_save, sender=TransferSchedule)
-# def notify_private_transfer_time_change(sender, instance, **kwargs):
-#     if not instance.pk:
-#         return  # Новый объект — не сравниваем
+def autowire_hotel_excursions(sender, instance, created, **kwargs):
+    """
+    После сохранения отеля: если выставлена excursion_zone,
+    создаём/обновляем строки ExcursionPickupPoint для всех Excursion,
+    беря эталонное время/точку из первого найденного отеля той же зоны.
+    Если в зоне ещё нет расписания – просто выходим (оно подтянется после импорта).
+    """
+    # если нет временной зоны — ничего не делаем
+    if not getattr(instance, "excursion_zone_id", None):
+        return
 
-#     try:
-#         old_instance = TransferSchedule.objects.get(pk=instance.pk)
-#     except TransferSchedule.DoesNotExist:
-#         return
+    # ЛЕНИВО получаем модели, чтобы не ловить NameError
+    Excursion = apps.get_model("core", "Excursion")
+    ExcursionPickupPoint = apps.get_model("core", "ExcursionPickupPoint")
+    # Hotel = apps.get_model("core", "Hotel")  # не требуется прямо здесь
 
-#     # Проверяем: это индивидуальный трансфер и время изменилось
-#     if instance.transfer_type != 'private' or old_instance.departure_time == instance.departure_time:
-#         return
+    with transaction.atomic():
+        for exc in Excursion.objects.all().only("id"):
+            # Эталон по зоне: любая запись этой экскурсии у отеля с той же зоной
+            sample = (
+                ExcursionPickupPoint.objects
+                .filter(excursion=exc, hotel__excursion_zone_id=instance.excursion_zone_id)
+                .values("pickup_time", "pickup_point_name", "latitude", "longitude")
+                .first()
+            )
+            if not sample:
+                # в зоне пока нет времени/точки — подтянется после импорта Excel
+                continue
 
-#     # Уведомления через TransferNotification
-#     notifications = TransferNotification.objects.filter(
-#         hotel=instance.hotel,
-#         departure_date=instance.departure_date,
-#         transfer_type='private'
-#     )
+            # Точка отеля имеет приоритет, если задана
+            pp_name = sample["pickup_point_name"]
+            lat = sample["latitude"]
+            lng = sample["longitude"]
 
-#     for notif in notifications:
-#         if notif.departure_time_sent == instance.departure_time:
-#             continue  # Уже отправлено
+            hotel_pp = getattr(instance, "pickup_point", None)
+            if getattr(hotel_pp, "name", None):
+                pp_name = hotel_pp.name
+                lat = getattr(hotel_pp, "latitude", lat)
+                lng = getattr(hotel_pp, "longitude", lng)
 
-#         activate(notif.language)
+            obj, created_epp = ExcursionPickupPoint.objects.get_or_create(
+                excursion=exc,
+                hotel=instance,
+                defaults={
+                    "pickup_time": sample["pickup_time"],
+                    "pickup_point_name": pp_name,
+                    "latitude": lat,
+                    "longitude": lng,
+                },
+            )
 
-#         context = {
-#             "hotel": instance.hotel.name,
-#             "date": instance.departure_date.strftime('%d.%m.%Y'),
-#             "time": instance.departure_time.strftime('%H:%M') if instance.departure_time else '',
-#             "map_link": f"https://maps.google.com/?q={instance.pickup_point.latitude},{instance.pickup_point.longitude}" if instance.pickup_point else "#",
-#         }
+            if not created_epp:
+                updates = {}
+                if obj.pickup_time != sample["pickup_time"]:
+                    updates["pickup_time"] = sample["pickup_time"]
+                if obj.pickup_point_name != pp_name and pp_name:
+                    updates["pickup_point_name"] = pp_name
+                if lat is not None and obj.latitude != lat:
+                    updates["latitude"] = lat
+                if lng is not None and obj.longitude != lng:
+                    updates["longitude"] = lng
 
-#         subject = "Transfer Information"
-#         html_content = render_to_string("emails/transfer_notification_en.html", context)
-#         text_content = strip_tags(html_content)
+                if updates:
+                    for k, v in updates.items():
+                        setattr(obj, k, v)
+                    obj.save(update_fields=list(updates.keys()))
 
-#         email = EmailMultiAlternatives(subject, text_content, settings.DEFAULT_FROM_EMAIL, [notif.email])
-#         email.attach_alternative(html_content, "text/html")
-#         email.send()
 
-#         notif.departure_time_sent = instance.departure_time
-#         notif.save(update_fields=["departure_time_sent"])
-
-#     # Уведомления по TransferInquiry
-#     inquiries = TransferInquiry.objects.filter(
-#         hotel=instance.hotel,
-#         departure_date=instance.departure_date,
-#         replied=True
-#     )
-
-#     for inquiry in inquiries:
-#         subject = "Transfer Time Updated"
-#         message = (
-#             f"Dear {inquiry.last_name},\n\n"
-#             f"The departure time of your transfer from the hotel {instance.hotel.name} "
-#             f"on {instance.departure_date.strftime('%d.%m.%Y')} has been updated.\n"
-#             f"New time: {instance.departure_time.strftime('%H:%M')}.\n\n"
-#             f"Best regards,\nCostaSolinfo Team"
-#         )
-
-#         send_mail(
-#             subject=subject,
-#             message=message,
-#             from_email=settings.DEFAULT_FROM_EMAIL,
-#             recipient_list=[inquiry.email],
-#             fail_silently=False
-#         )
+def connect_signals():
+    """
+    Подключаем сигнал лениво, чтобы не импортировать модели в модуле.
+    """
+    Hotel = apps.get_model("core", "Hotel")
+    post_save.connect(
+        autowire_hotel_excursions,
+        sender=Hotel,
+        dispatch_uid="core.autowire_hotel_excursions",
+    )
