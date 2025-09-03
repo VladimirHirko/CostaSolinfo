@@ -1,4 +1,5 @@
-import React, { useEffect } from "react";
+// src/components/PickupMap.js
+import React, { useEffect, useRef, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -14,43 +15,66 @@ L.Icon.Default.mergeOptions({
     "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
-// 🔹 Компонент для плавного перелёта карты
-const FlyToLocation = ({ lat, lng }) => {
+// Плавный контроллер вида без двойной анимации
+const SmoothView = ({ lat, lng, zoom = 15 }) => {
   const map = useMap();
+  const didInitRef = useRef(false);
 
   useEffect(() => {
-    if (lat && lng) {
-      map.flyTo([lat, lng], 15, {
-        duration: 1.5,
-      });
+    if (lat == null || lng == null) return;
+
+    const target = L.latLng(lat, lng);
+    const current = map.getCenter();
+    const dist = current.distanceTo(target); // м
+
+    if (!didInitRef.current) {
+      map.setView(target, zoom, { animate: false });
+      didInitRef.current = true;
+      return;
     }
-  }, [lat, lng, map]);
+
+    if (dist < 1 && map.getZoom() === zoom) return;
+
+    map.stop();
+    map.flyTo(target, zoom, { animate: true, duration: 0.6 });
+  }, [lat, lng, zoom, map]);
 
   return null;
 };
 
 const PickupMap = ({ hotel, pickupPoint }) => {
-  if (
-    (!pickupPoint || pickupPoint.lat == null || pickupPoint.lng == null) &&
-    (!hotel || hotel.lat == null || hotel.lng == null)
-  ) {
+  // Центр: приоритет — точка сбора
+  const center = useMemo(() => {
+    if (pickupPoint?.lat != null && pickupPoint?.lng != null) {
+      return [Number(pickupPoint.lat), Number(pickupPoint.lng)];
+    }
+    if (hotel?.lat != null && hotel?.lng != null) {
+      return [Number(hotel.lat), Number(hotel.lng)];
+    }
+    return null;
+  }, [pickupPoint?.lat, pickupPoint?.lng, hotel?.lat, hotel?.lng]);
+
+  if (!center) {
     return <p style={{ textAlign: "center" }}>Нет данных для отображения карты</p>;
   }
-
-  const center =
-    pickupPoint?.lat && pickupPoint?.lng
-      ? [pickupPoint.lat, pickupPoint.lng]
-      : [hotel.lat, hotel.lng];
 
   return (
     <MapContainer
       center={center}
       zoom={15}
+      // ✅ ВКЛЮЧАЕМ wheel-zoom, чтобы пинч на трекпаде работал
+      scrollWheelZoom={true}
+      // Для телефонов/планшетов оставляем пинч по touch
+      touchZoom={true}
+      dragging={true}
+      tap={false}
+      zoomControl={true}
       style={{
         height: "400px",
         width: "100%",
         borderRadius: "10px",
         marginTop: "20px",
+        touchAction: "auto",
       }}
     >
       <TileLayer
@@ -58,20 +82,23 @@ const PickupMap = ({ hotel, pickupPoint }) => {
         attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
       />
 
-      {hotel?.lat && hotel?.lng && (
-        <Marker position={[hotel.lat, hotel.lng]}>
+      {hotel?.lat != null && hotel?.lng != null && (
+        <Marker position={[Number(hotel.lat), Number(hotel.lng)]}>
           <Popup>Ваш отель: {hotel.name}</Popup>
         </Marker>
       )}
 
-      {pickupPoint?.lat && pickupPoint?.lng && (
-        <Marker position={[pickupPoint.lat, pickupPoint.lng]}>
+      {pickupPoint?.lat != null && pickupPoint?.lng != null && (
+        <Marker position={[Number(pickupPoint.lat), Number(pickupPoint.lng)]}>
           <Popup>Точка сбора: {pickupPoint.name}</Popup>
         </Marker>
       )}
 
-      {/* 🔹 Плавный перелёт */}
-      <FlyToLocation lat={pickupPoint?.lat || hotel?.lat} lng={pickupPoint?.lng || hotel?.lng} />
+      <SmoothView
+        lat={pickupPoint?.lat ?? hotel?.lat}
+        lng={pickupPoint?.lng ?? hotel?.lng}
+        zoom={15}
+      />
     </MapContainer>
   );
 };

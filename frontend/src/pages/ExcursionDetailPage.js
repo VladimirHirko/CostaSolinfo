@@ -1,3 +1,4 @@
+// src/pages/ExcursionDetailPage.js
 import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
@@ -10,75 +11,78 @@ import Breadcrumbs from "../components/Breadcrumbs";
 const ExcursionDetailPage = () => {
   const { id } = useParams();
   const { i18n, t } = useTranslation();
+
   const [excursion, setExcursion] = useState(null);
   const [hotelQuery, setHotelQuery] = useState("");
   const [hotelOptions, setHotelOptions] = useState([]);
   const [selectedHotel, setSelectedHotel] = useState(null);
   const [pickupInfo, setPickupInfo] = useState(null);
   const [error, setError] = useState("");
-  const mapRef = useRef(null);
+
+  // UI/галерея
   const [modalOpen, setModalOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showArrows, setShowArrows] = useState(false);
-  
 
-  let hideTimeout = null;
+  // refs
+  const mapRef = useRef(null);
+  const hideTimeoutRef = useRef(null);
+  const hotelInputRef = useRef(null);
 
-  const handleGalleryTap = () => {
-    setShowArrows(true);
-
-    // скрыть через 3 секунды
-    if (hideTimeout) clearTimeout(hideTimeout);
-    hideTimeout = setTimeout(() => setShowArrows(false), 3000);
-  };
-
-
-  const openModal = (index) => {
-    setCurrentIndex(index);
-    setModalOpen(true);
-  };
-
-  const closeModal = () => setModalOpen(false);
-
-  const prevImage = () => {
-    setCurrentIndex((prev) => (prev === 0 ? excursion.images.length - 1 : prev - 1));
-  };
-
-  const nextImage = () => {
-    setCurrentIndex((prev) => (prev === excursion.images.length - 1 ? 0 : prev + 1));
-  };
-  
-
-
-  // Загружаем экскурсию
+  // ===== Смена экскурсии — сбросить все выборы/состояния =====
   useEffect(() => {
+    setHotelQuery("");
+    setHotelOptions([]);
+    setSelectedHotel(null);
+    setPickupInfo(null);
+    setError("");
+  }, [id]);
+
+  // ===== Загрузка экскурсии =====
+  useEffect(() => {
+    let cancelled = false;
     axios
       .get(`/api/excursions/${id}/`, {
         headers: { "Accept-Language": i18n.language },
       })
-      .then((res) => setExcursion(res.data))
+      .then((res) => {
+        if (!cancelled) setExcursion(res.data);
+      })
       .catch((err) => console.error("Ошибка загрузки экскурсии:", err));
+    return () => {
+      cancelled = true;
+    };
   }, [id, i18n.language]);
 
-  // Поиск отелей
+  // ===== Поиск отелей с debounce + отменой запроса =====
   useEffect(() => {
     if (hotelQuery.length < 2 || selectedHotel?.name === hotelQuery) {
       setHotelOptions([]);
       return;
     }
 
-    const delayDebounce = setTimeout(() => {
+    const controller = new AbortController();
+    const delay = setTimeout(() => {
       axios
-        .get(`/api/hotels/?search=${hotelQuery}`)
+        .get(`/api/hotels/?search=${encodeURIComponent(hotelQuery)}`, {
+          signal: controller.signal,
+        })
         .then((res) => setHotelOptions(res.data))
-        .catch(() => setHotelOptions([]));
+        .catch((err) => {
+          // игнорируем именно отменённые/прерванные запросы
+          if (err.name !== "CanceledError" && err.name !== "AbortError") {
+            setHotelOptions([]);
+          }
+        });
     }, 300);
 
-    return () => clearTimeout(delayDebounce);
+    return () => {
+      clearTimeout(delay);
+      controller.abort();
+    };
   }, [hotelQuery, selectedHotel]);
 
-
-  // Выбор отеля
+  // ===== Выбор отеля =====
   const handleSelectHotel = (hotel) => {
     setSelectedHotel({
       ...hotel,
@@ -87,10 +91,9 @@ const ExcursionDetailPage = () => {
     });
     setHotelQuery(hotel.name);
     setHotelOptions([]);
-    //setPickupInfo(null);
 
-    // убираем фокус с input, чтобы список исчез сразу
-    document.getElementById("hotel-input").blur();
+    // убрать фокус с инпута (используем ref вместо getElementById)
+    hotelInputRef.current?.blur();
 
     axios
       .get(`/api/excursions/${id}/pickup/?hotel_id=${hotel.id}`)
@@ -106,12 +109,6 @@ const ExcursionDetailPage = () => {
             child_price: res.data.price_child || null,
           });
           setError("");
-          // 🔹 прокрутка к карте
-          setTimeout(() => {
-            if (mapRef.current) {
-              mapRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-            }
-          }, 300);
         } else {
           setPickupInfo(null);
           setError(t("no_excursion_for_hotel"));
@@ -123,17 +120,54 @@ const ExcursionDetailPage = () => {
       });
   };
 
+  // ===== Мягкий скролл к карте после прихода pickupInfo =====
+  useEffect(() => {
+    if (!pickupInfo) return;
+    const t = setTimeout(() => {
+      mapRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 400);
+    return () => clearTimeout(t);
+  }, [pickupInfo]);
+
+  // ===== Галерея: показать стрелки на 3 секунды, очистка таймера =====
+  const handleGalleryTap = () => {
+    setShowArrows(true);
+    if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+    hideTimeoutRef.current = setTimeout(() => setShowArrows(false), 3000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+    };
+  }, []);
+
+  const openModal = (index) => {
+    setCurrentIndex(index);
+    setModalOpen(true);
+  };
+  const closeModal = () => setModalOpen(false);
+  const prevImage = () => {
+    setCurrentIndex((prev) => (prev === 0 ? excursion.images.length - 1 : prev - 1));
+  };
+  const nextImage = () => {
+    setCurrentIndex((prev) => (prev === excursion.images.length - 1 ? 0 : prev + 1));
+  };
+
   if (!excursion) return <p>{t("loading")}</p>;
 
   return (
     <>
       <PageBanner page="excursions" />
       <div className="page-container">
-        <Breadcrumbs items={[
+        <Breadcrumbs
+          items={[
             { to: "/", label: t("home") },
             { to: "/excursions", label: t("excursions") },
-            { label: excursion?.title || "…" }
-          ]}/>
+            { label: excursion?.title || "…" },
+          ]}
+        />
+
         <div className="excursion-detail-container">
           <h1>{excursion.localized_title}</h1>
 
@@ -147,11 +181,14 @@ const ExcursionDetailPage = () => {
                 className="gallery-arrow left"
                 onClick={(e) => {
                   e.stopPropagation();
-                  document.querySelector(".excursion-gallery").scrollBy({ left: -300, behavior: "smooth" });
+                  document
+                    .querySelector(".excursion-gallery")
+                    .scrollBy({ left: -300, behavior: "smooth" });
                 }}
               >
                 ‹
               </button>
+
               <div className="excursion-gallery">
                 {excursion.images.map((img, idx) => (
                   <img
@@ -165,11 +202,14 @@ const ExcursionDetailPage = () => {
                   />
                 ))}
               </div>
+
               <button
                 className="gallery-arrow right"
                 onClick={(e) => {
                   e.stopPropagation();
-                  document.querySelector(".excursion-gallery").scrollBy({ left: 300, behavior: "smooth" });
+                  document
+                    .querySelector(".excursion-gallery")
+                    .scrollBy({ left: 300, behavior: "smooth" });
                 }}
               >
                 ›
@@ -177,19 +217,32 @@ const ExcursionDetailPage = () => {
             </div>
           )}
 
-
-
           {modalOpen && (
             <div className="modal" onClick={closeModal}>
-              <span className="close-btn" onClick={closeModal}>×</span>
-              <span className="modal-arrow left" onClick={(e) => { e.stopPropagation(); prevImage(); }}>‹</span>
+              <span className="close-btn" onClick={closeModal}>
+                ×
+              </span>
+              <span
+                className="modal-arrow left"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  prevImage();
+                }}
+              >
+                ‹
+              </span>
               <img src={excursion.images[currentIndex]} alt={`Фото ${currentIndex + 1}`} />
-              <span className="modal-arrow right" onClick={(e) => { e.stopPropagation(); nextImage(); }}>›</span>
+              <span
+                className="modal-arrow right"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  nextImage();
+                }}
+              >
+                ›
+              </span>
             </div>
           )}
-
-
-
 
           {/* Основной контент */}
           <div className="excursion-content">
@@ -201,12 +254,9 @@ const ExcursionDetailPage = () => {
             ))}
           </div>
 
-          
-
           {/* Блок выбора отеля */}
           <div className="hotel-select-block">
             <h3 className="hotel-title">🚍 {t("excursion.select_hotel_title")}</h3>
-            {/*<p className="hotel-instruction">{t("excursion.select_hotel_instruction")}</p>*/}
 
             <div className="hotel-select">
               <label htmlFor="hotel-input" className="hotel-label">
@@ -214,6 +264,7 @@ const ExcursionDetailPage = () => {
               </label>
               <input
                 id="hotel-input"
+                ref={hotelInputRef}
                 type="text"
                 value={hotelQuery}
                 autoComplete="off"
@@ -231,7 +282,7 @@ const ExcursionDetailPage = () => {
                       onClick={() => {
                         handleSelectHotel(hotel);
                         setHotelOptions([]); // очистить список
-                        document.getElementById("hotel-input").blur(); // убрать фокус
+                        hotelInputRef.current?.blur(); // убрать фокус
                       }}
                     >
                       {hotel.name}
@@ -241,8 +292,6 @@ const ExcursionDetailPage = () => {
               )}
             </div>
           </div>
-
-
 
           {/* Карта с точкой сбора */}
           {pickupInfo && (
@@ -256,18 +305,12 @@ const ExcursionDetailPage = () => {
                 {(pickupInfo.adult_price || pickupInfo.child_price) && (
                   <div className="excursion-prices">
                     {pickupInfo.adult_price && (
-                      <p className="price-adult">
-                        💶 {t("adult_price")}: {pickupInfo.adult_price} €
-                      </p>
+                      <p className="price-adult">💶 {t("adult_price")}: {pickupInfo.adult_price} €</p>
                     )}
                     {pickupInfo.child_price && (
                       <>
-                        <p className="price-child">
-                          👧 {t("child_price")}: {pickupInfo.child_price} €
-                        </p>
-                        <p className="child-note">
-                          {t("excursion.child_free_note")}
-                        </p>
+                        <p className="price-child">👧 {t("child_price")}: {pickupInfo.child_price} €</p>
+                        <p className="child-note">{t("excursion.child_free_note")}</p>
                       </>
                     )}
                   </div>
@@ -303,12 +346,9 @@ const ExcursionDetailPage = () => {
             </p>
           )}
 
-          {/* Временно скрыли кнопку */}
+          {/* Временно скрытая кнопка */}
           {false && (
-            <button
-              className="book-button"
-              disabled={!selectedHotel || !pickupInfo}
-            >
+            <button className="book-button" disabled={!selectedHotel || !pickupInfo}>
               {t("show_info")}
             </button>
           )}

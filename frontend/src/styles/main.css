@@ -381,3 +381,9 @@ body {
   .main-container, .page-container { padding:0 !important; box-shadow:none !important; }
   a[href]:after{ content:" (" attr(href) ")"; font-size:0.85em; color:#555; }
 }
+
+
+/* Разрешаем жесты для карты на всякий случай */
+.leaflet-container {
+  touch-action: auto !important;
+}
