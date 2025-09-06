@@ -7,6 +7,7 @@ from django.conf import settings
 from ckeditor.fields import RichTextField
 from django.contrib.gis.db import models as geomodels
 
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -789,7 +790,32 @@ class ExcursionContentBlock(models.Model):
 
 
 
+# Модель правил на экскурсиях
+LANG_CHOICES = [
+    ("en", "English"),
+    ("es", "Español"),
+    ("lt", "Lietuvių"),
+    ("lv", "Latviešu"),
+    ("et", "Eesti"),
+    ("ru", "Русский"),
+    ("uk", "Українська"),
+]
 
+class ExcursionRules(models.Model):
+    language_code = models.CharField(
+        "Language code", max_length=5, choices=LANG_CHOICES, unique=True
+    )
+    title = models.CharField("Title", max_length=255, default="Правила поведения на экскурсиях")
+    content = RichTextField("Content (HTML)")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Excursion rules"
+        verbose_name_plural = "Excursion rules"
+        ordering = ["language_code"]
+
+    def __str__(self):
+        return dict(LANG_CHOICES).get(self.language_code, self.language_code)
 
 
 # Модель политики конфиденциальности

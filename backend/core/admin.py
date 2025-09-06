@@ -22,7 +22,8 @@ from .models import (
     TransferChangeLog, PrivacyPolicy, Homepage, InfoMeetingScheduleItem,
     ExcursionPickupPoint, ExcursionRegionPrice, ExcursionContentBlock, 
     ExcursionPickupReference, ExcursionImage, Question, TeamMember,
-    TransferPageContentBlock, TransferPassenger, HotelExcursion, ExcursionZone
+    TransferPageContentBlock, TransferPassenger, HotelExcursion, ExcursionZone,
+    ExcursionRules
 )
 from leaflet.admin import LeafletGeoAdmin
 from leaflet.forms.widgets import LeafletWidget
@@ -45,6 +46,13 @@ try:
 except Exception:
     pd = None
 
+
+# Правила проведения экскурсий
+@admin.register(ExcursionRules)
+class ExcursionRulesAdmin(admin.ModelAdmin):
+    list_display = ("language_code", "title", "updated_at")
+    search_fields = ("title", "content")
+    list_filter = ("language_code",)
 
 
 # Баннеры на старницах

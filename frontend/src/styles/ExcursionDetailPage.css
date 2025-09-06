@@ -274,3 +274,78 @@
   .google-maps-button-container { text-align: center; }
   .hotel-select { max-width: 100%; }
 }
+
+
+/* Блоки описания контента */
+
+.excursion-block {
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.excursion-block h3 {
+  margin-top: 0;
+  font-size: 1.2rem;
+}
+
+.excursion-block ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+/* Разные цвета для разных блоков */
+.excursion-block.included {
+  background: #e6f9f0;
+  border-left: 6px solid #28a745;
+}
+
+.excursion-block.excluded {
+  background: #fff5f5;
+  border-left: 6px solid #dc3545;
+}
+
+.excursion-block.must-have {
+  background: #f0f7ff;
+  border-left: 6px solid #007bff;
+}
+
+.excursion-block.recommendations {
+  background: #fffbea;
+  border-left: 6px solid #ffc107;
+}
+
+
+/* Модалка для правил поведения на экскурсих */
+/* Базовые */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.5); display:flex; align-items:center; justify-content:center; z-index:1000; }
+.modal-card { background:#fff; width:min(820px,92vw); max-height:88vh; border-radius:14px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.2); display:flex; flex-direction:column; }
+.modal-header { padding:14px 18px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center; }
+.modal-header h3 { margin:0; font-size:1.2rem; }
+.modal-close { background:transparent; border:0; font-size:22px; line-height:1; cursor:pointer; }
+.modal-body { padding:16px 18px; overflow:auto; line-height:1.5; }
+.modal-body h1, .modal-body h2, .modal-body h3 { margin:0 0 12px; }
+.modal-body ul { margin:0 0 10px; padding-left:20px; }
+.modal-body img { max-width:100%; height:auto; display:block; margin:8px 0; }
+.modal-footer { padding:12px 18px; border-top:1px solid #eee; display:flex; justify-content: center; gap:8px; }
+
+.btn-primary { background:#2364c4; color:#fff; border:0; padding:10px 14px; border-radius:8px; cursor:pointer; }
+.btn-primary:disabled { opacity:.6; cursor:not-allowed; }
+.btn-primary:focus-visible, .modal-close:focus-visible { outline:2px solid #0d6efd; outline-offset:2px; }
+
+/* Кнопка под описанием — на мобиле на всю ширину */
+.rules-btn { width:auto; }
+@media (max-width: 640px) {
+  .rules-btn { width:100%; }
+
+  /* Модалка — мобильный фулл-скрин */
+  .modal-card { width:100vw; height:100vh; max-height:none; border-radius:0; }
+  .modal-header { position:sticky; top:0; background:#fff; z-index:1; }
+  .modal-footer { position:sticky; bottom:0; background:#fff; }
+}
+
+/* Уважать настройку «уменьшить анимации» */
+@media (prefers-reduced-motion: reduce) {
+  .modal-backdrop, .modal-card { transition: none !important; }
+}

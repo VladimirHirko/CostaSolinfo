@@ -3,8 +3,9 @@ import Levenshtein
 from datetime import datetime
 from rest_framework.generics import RetrieveAPIView, ListAPIView, CreateAPIView
 from rest_framework.views import APIView
-from rest_framework.decorators import api_view, throttle_classes
+from rest_framework.decorators import api_view, throttle_classes, permission_classes
 from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
 from rest_framework import viewsets, status, generics
 from rest_framework.throttling import AnonRateThrottle
 from django.http import JsonResponse
@@ -14,7 +15,8 @@ from core.models import (
     PageBanner, Hotel, PickupPoint, TransferNotification,
     TransferInquiry, TransferScheduleItem, TransferScheduleGroup,
     PrivacyPolicy, InfoMeetingScheduleItem, ExcursionRegionPrice,
-    PageBanner, ExcursionPickupPoint, Question, TeamMember, TransferPageContentBlock
+    PageBanner, ExcursionPickupPoint, Question, TeamMember, TransferPageContentBlock,
+    ExcursionRules
     )
 from core.utils import send_html_email, send_question_notification
 from .serializers import (
@@ -24,7 +26,7 @@ from .serializers import (
     HotelSerializer, SimpleHotelSerializer, TransferNotificationCreateSerializer,
     TransferInquirySerializer, PrivacyPolicySerializer, InfoMeetingScheduleItemSerializer,
     PageBannerSerializer, ExcursionDetailSerializer, QuestionSerializer, TeamMemberSerializer,
-    TransferPageContentBlockSerializer
+    TransferPageContentBlockSerializer, ExcursionRulesSerializer
     )
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.contrib import admin
@@ -32,14 +34,12 @@ from django.conf import settings
 
 from django.urls import path
 from django.utils.translation import activate, get_language, gettext as _
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from .forms import BulkTransferScheduleForm
 from .models import Hotel, TransferSchedule
 
 from django.template.loader import render_to_string
 
-
-from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from Levenshtein import distance as levenshtein_distance
 from .models import TransferScheduleGroup, TransferSchedule, PickupPoint, Hotel
@@ -788,6 +788,21 @@ def hotel_search(request):
     return Response(list(hotels))
 
 
+# Правила проведения экскурсий
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def excursion_rules_detail(request):
+    lang = (request.GET.get("lang") or "ru").lower()
+    # fallback: ru -> en -> первый попавшийся
+    try:
+        obj = ExcursionRules.objects.get(language_code=lang)
+    except ExcursionRules.DoesNotExist:
+        obj = (ExcursionRules.objects.filter(language_code="en").first()
+               or ExcursionRules.objects.first())
+    ser = ExcursionRulesSerializer(obj)
+    return Response(ser.data)
+
+
 # Политика конфиденциальности
 class PrivacyPolicyView(APIView):
     def get(self, request):
@@ -802,37 +817,4 @@ class PrivacyPolicyView(APIView):
 
 class ContactThrottle(AnonRateThrottle):
     rate = '5/min'   # простая антиспам-защита
-
-# @api_view(['POST'])
-# @throttle_classes([ContactThrottle])
-# def contact_questions(request):
-#     data = request.data.copy()
-#     data.setdefault('source', 'contacts')
-
-#     # ✅ нормализуем текст вопроса из разных возможных полей
-#     raw_q = data.get('question') or data.get('message') or data.get('text') or ''
-#     data['question'] = str(raw_q).strip() or None
-
-#     # защитимся от «левых» категорий
-#     if data.get('category') not in dict(Question.CATEGORY_CHOICES):
-#         data['category'] = 'other'
-
-#     # 🔥 добавим обработку языка (иначе язык остаётся "None")
-#     language = (data.get('language') or request.headers.get("Accept-Language") or "ru")[:5]
-#     data['language'] = language
-
-#     if settings.DEBUG:
-#         print('[CONTACT_FORM] incoming:', dict(request.data))
-#         print('[CONTACT_FORM] normalized:', data)
-
-#     # ✅ передаём нормализованные данные, а не request.data
-#     serializer = QuestionSerializer(data=data, context={'request': request})
-#     if serializer.is_valid():
-#         obj = serializer.save()
-#         return Response({'ok': True, 'id': obj.id}, status=status.HTTP_201_CREATED)
-
-#     return Response({'ok': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
-
-
-
 

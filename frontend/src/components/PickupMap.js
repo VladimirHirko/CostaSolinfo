@@ -80,7 +80,15 @@ const PickupMap = ({ hotel, pickupPoint }) => {
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
+        /* ⬇️ ключевые опции против белых линий */
+        tileSize={512}        // использовать 512-px тайлы
+        zoomOffset={-1}       // компенсировать масштаб
+        detectRetina={true}   // лучше на ретине
+        keepBuffer={3}        // немного больше буфера при скролле
+        updateWhenZooming={false}
+        updateWhenIdle={true}
       />
+
 
       {hotel?.lat != null && hotel?.lng != null && (
         <Marker position={[Number(hotel.lat), Number(hotel.lng)]}>

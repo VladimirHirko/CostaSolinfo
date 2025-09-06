@@ -7,6 +7,8 @@ import PageBanner from "../components/PageBanner";
 import PickupMap from "../components/PickupMap";
 import "../styles/ExcursionDetailPage.css";
 import Breadcrumbs from "../components/Breadcrumbs";
+import RulesModal from "../components/RulesModal";
+import { fetchExcursionRules } from "../helpers/core";
 
 const ExcursionDetailPage = () => {
   const { id } = useParams();
@@ -28,6 +30,25 @@ const ExcursionDetailPage = () => {
   const mapRef = useRef(null);
   const hideTimeoutRef = useRef(null);
   const hotelInputRef = useRef(null);
+
+  // Модалка правил поведения на экскурсиях
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [rulesHtml, setRulesHtml] = useState("");
+  const [rulesTitle, setRulesTitle] = useState(t("rules.title"));
+
+  // ===== Загрузка правил экскурсии по текущему языку =====
+  useEffect(() => {
+    const lang = (i18n.language || "ru").toLowerCase().split("-")[0]; // 'ru-RU' -> 'ru'
+    fetchExcursionRules(lang)
+      .then((d) => {
+        setRulesHtml(d?.content || "");
+        setRulesTitle(d?.title || t("rules.title"));
+      })
+      .catch((e) => {
+        console.error("Ошибка загрузки правил:", e);
+        setRulesHtml("");
+      });
+  }, [i18n.language, t]);
 
   // ===== Смена экскурсии — сбросить все выборы/состояния =====
   useEffect(() => {
@@ -246,13 +267,40 @@ const ExcursionDetailPage = () => {
 
           {/* Основной контент */}
           <div className="excursion-content">
-            {excursion.content_blocks?.map((block, idx) => (
-              <div key={idx} className="excursion-block">
-                <h2>{block.localized_title}</h2>
-                <div dangerouslySetInnerHTML={{ __html: block.localized_content }} />
-              </div>
-            ))}
+            {excursion.content_blocks?.map((block, idx) => {
+              const excursionTitle =
+                (excursion.localized_title || excursion.title || "").trim();
+
+              // Показываем заголовок блока только если:
+              // - он существует и не пустой
+              // - не равен заголовку экскурсии (чтобы не дублировать)
+              // - и блок не является "описанием" (если приходит тип)
+              const blockTitle = (block.localized_title || "").trim();
+              const isDescription =
+                (block.block_type || block.type) === "description";
+
+              const showTitle =
+                blockTitle &&
+                blockTitle !== excursionTitle &&
+                !isDescription;
+
+              return (
+                <div key={idx} className="excursion-block">
+                  {showTitle && <h2>{block.localized_title}</h2>}
+                  <div dangerouslySetInnerHTML={{ __html: block.localized_content }} />
+                </div>
+              );
+            })}
           </div>
+
+          <div style={{ margin: "16px 0 24px" }}>
+            <button className="btn-primary rules-btn" onClick={() => setRulesOpen(true)} disabled={!rulesHtml}>
+              📝 {t("rules.button")}
+            </button>
+          </div>
+          <RulesModal open={rulesOpen} onClose={() => setRulesOpen(false)} html={rulesHtml} title={rulesTitle} okLabel={t("rules.ok")} />
+
+
 
           {/* Блок выбора отеля */}
           <div className="hotel-select-block">

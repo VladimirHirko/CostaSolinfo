@@ -6,6 +6,18 @@ import { useTranslation } from "react-i18next";
 import PageBanner from "../components/PageBanner";
 import "../styles/ExcursionsPage.css";
 import Breadcrumbs from "../components/Breadcrumbs";
+import { normalizeText } from "../helpers/normalizeText";
+
+const stripHtml = (html) => (html || "").replace(/<\/?[^>]+(>|$)/g, "");
+
+const makeIntro = (html, maxLen = 120) => {
+  const clean = normalizeText(stripHtml(html));
+  if (!clean) return "";
+  if (clean.length <= maxLen) return clean;
+  const cut = clean.slice(0, maxLen);
+  const safeEnd = cut.lastIndexOf(" ");
+  return (safeEnd > 60 ? cut.slice(0, safeEnd) : cut) + "…";
+};
 
 const ExcursionsPage = () => {
   const { t, i18n } = useTranslation();
@@ -17,8 +29,8 @@ const ExcursionsPage = () => {
   useEffect(() => {
     axios
       .get("/api/excursions/", { headers: { "Accept-Language": i18n.language } })
-      .then(res => { setExcursions(res.data || []); })
-      .catch(err => { console.error("Ошибка загрузки экскурсий:", err); })
+      .then((res) => { setExcursions(res.data || []); })
+      .catch((err) => { console.error("Ошибка загрузки экскурсий:", err); })
       .finally(() => setLoading(false));
   }, [i18n.language]);
 
@@ -50,9 +62,7 @@ const ExcursionsPage = () => {
                 : `http://127.0.0.1:8000${excursion.image}`;
             }
 
-            const introText = excursion.localized_description
-              ? excursion.localized_description.replace(/<\/?[^>]+(>|$)/g, "").slice(0, 120) + "…"
-              : "";
+            const introText = makeIntro(excursion.localized_description, 120);
 
             return (
               <div key={excursion.id} className="excursion-card">

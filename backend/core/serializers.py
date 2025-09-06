@@ -6,7 +6,8 @@ from core.models import (
     Question, ContactInfo, AboutUs, TransferSchedule,
     Hotel, PickupPoint, TransferNotification, TransferInquiry,
     PrivacyPolicy, InfoMeetingScheduleItem, ExcursionContentBlock,
-    PageBanner, ExcursionImage, Question, TeamMember, TransferPageContentBlock
+    PageBanner, ExcursionImage, Question, TeamMember, TransferPageContentBlock,
+    ExcursionRules
     )
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -18,6 +19,14 @@ logger = logging.getLogger(__name__)
 _TRIM_RE = re.compile(r'^[\s\u00A0\u200B\u200C\u200D\uFEFF]+|[\s\u00A0\u200B\u200C\u200D\uFEFF]+$')
 
 SUPPORTED_LANGS = ('ru','en','es','lt','lv','et','uk')
+
+
+# Правила проведения экскурсий
+class ExcursionRulesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExcursionRules
+        fields = ("language_code", "title", "content", "updated_at")
+        
 
 class PageBannerSerializer(serializers.ModelSerializer):
     titles = serializers.SerializerMethodField()

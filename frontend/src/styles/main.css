@@ -9,15 +9,17 @@
 /* ========== ГЛОБАЛЬНЫЕ СТИЛИ ========== */
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
   background-color: #fff;
-  color: #222;
+  font-family: "Trebuchet MS", Helvetica, Arial, sans-serif;
+  font-size: 16px;      /* базовый размер, можно подогнать */
+  line-height: 1.6;     /* удобочитаемость */
+  color: #333;          /* стандартный цвет текста */
 }
 
 /* ========== Общая обёртка ========== */
 .app-wrapper {
   padding: 20px;
-  font-family: 'Arial', sans-serif;
+  font-family: inherit;
   background-color: #fff;
   color: #222;
 }
@@ -386,4 +388,14 @@ body {
 /* Разрешаем жесты для карты на всякий случай */
 .leaflet-container {
   touch-action: auto !important;
+}
+
+
+/* Убираем белые «швы» между тайлами Leaflet */
+.leaflet-container .leaflet-tile {
+  border: none !important;
+  outline: 1px solid transparent; /* hairline-хак */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translateZ(0);       /* избегаем субпиксельных артефактов */
 }
