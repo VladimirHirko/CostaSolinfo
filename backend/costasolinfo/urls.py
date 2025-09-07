@@ -13,8 +13,8 @@ from core.views import (
     confirm_transfer_notification, PrivacyPolicyView, info_meeting_schedule,
     ExcursionListView, PageBannerView, ExcursionDetailView, pickup_point_detail,
     excursion_pickup_view, QuestionCreateAPIView, TeamMemberListAPIView,
-    TransferContentListAPIView, excursion_rules_detail
-)
+    TransferContentListAPIView, excursion_rules_detail, AskPageContentView
+) 
 
 transfer_notification_view = TransferNotificationViewSet.as_view({'post': 'create'})
 
@@ -58,6 +58,7 @@ urlpatterns = [
     path("api/contact-questions/", QuestionCreateAPIView.as_view(), name="contact-questions"),
     path('api/about/team/', TeamMemberListAPIView.as_view(), name='team-member-list'),
     path("api/excursions/rules/", excursion_rules_detail, name="excursion-rules"),
+    path("api/pages/ask/", AskPageContentView.as_view(), name="ask_page_content"),
 
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

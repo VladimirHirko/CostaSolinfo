@@ -325,6 +325,39 @@ class Question(models.Model):
         logger.debug("[Question.save] AFTER  id=%s question=%r", getattr(self, 'id', None), getattr(self, 'question', None))
 
 
+class AskPageContent(models.Model):
+    # Заголовки
+    title_ru = models.CharField(max_length=255, blank=True, default="")
+    title_en = models.CharField(max_length=255, blank=True, default="")
+    title_es = models.CharField(max_length=255, blank=True, default="")
+    title_uk = models.CharField(max_length=255, blank=True, default="")
+    title_lt = models.CharField(max_length=255, blank=True, default="")
+    title_lv = models.CharField(max_length=255, blank=True, default="")
+    title_et = models.CharField(max_length=255, blank=True, default="")
+
+    # Содержимое (RichText)
+    content_ru = models.TextField(blank=True, default="")
+    content_en = models.TextField(blank=True, default="")
+    content_es = models.TextField(blank=True, default="")
+    content_uk = models.TextField(blank=True, default="")
+    content_lt = models.TextField(blank=True, default="")
+    content_lv = models.TextField(blank=True, default="")
+    content_et = models.TextField(blank=True, default="")
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Контент страницы «Задать вопрос»"
+        verbose_name_plural = "Контент страницы «Задать вопрос»"
+
+    # Универсальная выдача локализованных полей с фолбэком
+    def get_localized(self, lang: str):
+        lang = (lang or "ru").lower().split("-")[0]
+        t = getattr(self, f"title_{lang}", "") or self.title_ru or self.title_en or ""
+        c = getattr(self, f"content_{lang}", "") or self.content_ru or self.content_en or ""
+        return {"title": t, "content": c}
+
+
 # Контакты
 class ContactInfo(models.Model):
     office_name = models.CharField(max_length=100)

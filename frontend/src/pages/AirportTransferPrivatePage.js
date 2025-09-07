@@ -359,8 +359,7 @@ const AirportTransferPrivatePage = () => {
           { label: t("private_transfer") } // или t("private_transfer")
         ]}/>
         
-        <h1>{t('private_transfer')}</h1>
-        <p>{t('enter_hotel_and_date')}</p>
+        
         <TransferContent page="transfer_private" />
         
         <form onSubmit={handleSubmit} className="transfer-form left-aligned">

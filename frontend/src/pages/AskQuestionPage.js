@@ -1,5 +1,5 @@
 // frontend/src/pages/AskQuestionPage.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import PageBanner from '../components/PageBanner';
 import '../styles/main.css';
@@ -7,6 +7,9 @@ import { normalizeText } from '../helpers/normalizeText';
 
 function AskQuestionPage() {
   const { t, i18n } = useTranslation();
+
+  // 🔹 контент из админки (title + content)
+  const [page, setPage] = useState({ title: '', content: '' });
 
   const [form, setForm] = useState({
     name: '',
@@ -16,6 +19,17 @@ function AskQuestionPage() {
   });
   const [status, setStatus] = useState(null);       // 'success' | 'error' | null
   const [submitting, setSubmitting] = useState(false);
+
+  // 🔹 тянем контент страницы из API (фолбэк на i18n)
+  useEffect(() => {
+    fetch('/api/pages/ask/', { headers: { 'Accept-Language': i18n.language } })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data) => setPage({
+        title: data?.title || '',
+        content: data?.content || '',
+      }))
+      .catch(() => setPage({ title: '', content: '' }));
+  }, [i18n.language]);
 
   const onChange = (e) => {
     const { name, value } = e.target;
@@ -37,11 +51,11 @@ function AskQuestionPage() {
       email: normalizeText(form.email),
       category: form.category || 'other',
       language: i18n.language,
-      question: normalizeText(form.question),   // 👈 единственное текстовое поле
+      question: normalizeText(form.question),
       source: 'ask',
     };
 
-    // клиентская проверка — не слать пустые/невидимые строки
+    // не отправляем пустые/невидимые сообщения
     if (!hasLettersOrNumbers(payload.question)) {
       setStatus('error');
       setSubmitting(false);
@@ -62,8 +76,7 @@ function AskQuestionPage() {
       if (!res.ok) throw new Error(data?.message || 'send failed');
 
       setStatus('success');
-      // очищаем только сообщение, имя/почту/категорию можно оставить
-      setForm((prev) => ({ ...prev, question: '' }));
+      setForm((prev) => ({ ...prev, question: '' })); // чистим только поле вопроса
     } catch (err) {
       console.error('[AskQuestion] send error:', err);
       setStatus('error');
@@ -77,12 +90,23 @@ function AskQuestionPage() {
       <PageBanner page="ask" />
 
       <div className="page-container">
-        <h2 style={{ textAlign: 'center', marginBottom: 20 }}>
-          {t('ask_question')}
+        <h2 className="ask-title">
+          {page.title || t('ask_question')}
         </h2>
-        <p className="welcome-text" style={{ textAlign: 'center' }}>
-          {t('ask_intro')}
-        </p>
+
+        {page.content ? (
+          <div
+            className="welcome-text"
+            style={{ textAlign: 'left-aligned' }}
+            // Контент из админки — доверенный HTML
+            dangerouslySetInnerHTML={{ __html: page.content }}
+          />
+        ) : (
+          <p className="ask-intro">
+            {t('ask_intro')}
+          </p>
+
+        )}
 
         <form className="transfer-form left-aligned" onSubmit={onSubmit} noValidate>
           <label htmlFor="aq-name">{t('your_name')}</label>
@@ -128,7 +152,7 @@ function AskQuestionPage() {
           <label htmlFor="aq-question">{t('your_question')}</label>
           <textarea
             id="aq-question"
-            name="question"             // 👈 важно: одно имя на всех языках
+            name="question"
             rows="5"
             value={form.question}
             onChange={onChange}

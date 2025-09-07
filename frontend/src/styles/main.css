@@ -399,3 +399,26 @@ body {
   -webkit-backface-visibility: hidden;
   transform: translateZ(0);       /* избегаем субпиксельных артефактов */
 }
+
+
+/* Ask page: левое выравнивание */
+.ask-title {
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.ask-intro {
+  text-align: left;
+  max-width: 900px;      /* опционально: чтобы строки читались комфортно */
+  margin-bottom: 16px;
+}
+
+/* Если редактор в админке вставил инлайн text-align:center — принудительно переопределим */
+.ask-intro, .ask-intro * {
+  text-align: left !important;
+}
+
+/* Форма уже левая; на всякий случай */
+.transfer-form.left-aligned {
+  align-items: flex-start;
+}

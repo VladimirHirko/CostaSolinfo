@@ -23,7 +23,7 @@ from .models import (
     ExcursionPickupPoint, ExcursionRegionPrice, ExcursionContentBlock, 
     ExcursionPickupReference, ExcursionImage, Question, TeamMember,
     TransferPageContentBlock, TransferPassenger, HotelExcursion, ExcursionZone,
-    ExcursionRules
+    ExcursionRules, AskPageContent
 )
 from leaflet.admin import LeafletGeoAdmin
 from leaflet.forms.widgets import LeafletWidget
@@ -206,6 +206,30 @@ class QuestionAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
         if send_email:
             send_answer_notification(obj)
+
+
+class AskPageContentAdminForm(forms.ModelForm):
+    class Meta:
+        model = AskPageContent
+        fields = "__all__"
+        # тот же CKEditor, что ты уже используешь в политике приватности
+        widgets = {
+            "content_ru": CKEditorWidget(), "content_en": CKEditorWidget(),
+            "content_es": CKEditorWidget(), "content_uk": CKEditorWidget(),
+            "content_lt": CKEditorWidget(), "content_lv": CKEditorWidget(),
+            "content_et": CKEditorWidget(),
+        }
+
+@admin.register(AskPageContent)
+class AskPageContentAdmin(admin.ModelAdmin):
+    form = AskPageContentAdminForm
+    list_display = ("updated_at",)
+    # делаем модель «синглтоном»: одна запись на сайт
+    def has_add_permission(self, request):
+        if AskPageContent.objects.exists():
+            return False
+        return super().has_add_permission(request)
+
 
 
 # Контакты

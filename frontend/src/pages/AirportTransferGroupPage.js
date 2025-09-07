@@ -290,8 +290,8 @@ const AirportTransferGroupPage = () => {
 
       <TransferContent page="transfer_group" />
         
-        <h1>{t('group_transfer')}</h1>
-        <p>{t('enter_hotel_and_date')}</p>
+        
+        
 
         <form onSubmit={handleSubmit} className="transfer-form left-aligned">
           {/* 🔹 Отель */}

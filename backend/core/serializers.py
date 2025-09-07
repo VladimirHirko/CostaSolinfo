@@ -328,6 +328,11 @@ class QuestionSerializer(serializers.ModelSerializer):
         return instance
 
 
+class AskPageContentSerializer(serializers.Serializer):
+    title = serializers.CharField()
+    content = serializers.CharField()
+
+
 
 class ContactInfoSerializer(BaseTranslationSerializer):
     translatable_fields = ['office_name', 'address']

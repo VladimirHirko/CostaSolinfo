@@ -98,7 +98,7 @@ const InfoMeetingPage = () => {
                 setHotelQuery(e.target.value);
                 setSelectedHotel(null);
               }}
-              placeholder={t('choose_hotel')}
+              placeholder={t('choose_hotel_placeholder')}
             />
             {suggestionsVisible && hotelOptions.length > 0 && !hotelOptions.some(h => h.name === hotelQuery) && (
               <ul className="autocomplete-list">

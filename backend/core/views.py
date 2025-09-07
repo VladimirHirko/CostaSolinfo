@@ -16,7 +16,7 @@ from core.models import (
     TransferInquiry, TransferScheduleItem, TransferScheduleGroup,
     PrivacyPolicy, InfoMeetingScheduleItem, ExcursionRegionPrice,
     PageBanner, ExcursionPickupPoint, Question, TeamMember, TransferPageContentBlock,
-    ExcursionRules
+    ExcursionRules, AskPageContent
     )
 from core.utils import send_html_email, send_question_notification
 from .serializers import (
@@ -26,7 +26,7 @@ from .serializers import (
     HotelSerializer, SimpleHotelSerializer, TransferNotificationCreateSerializer,
     TransferInquirySerializer, PrivacyPolicySerializer, InfoMeetingScheduleItemSerializer,
     PageBannerSerializer, ExcursionDetailSerializer, QuestionSerializer, TeamMemberSerializer,
-    TransferPageContentBlockSerializer, ExcursionRulesSerializer
+    TransferPageContentBlockSerializer, ExcursionRulesSerializer, AskPageContentSerializer
     )
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.contrib import admin
@@ -692,6 +692,19 @@ class QuestionCreateAPIView(APIView):
             "saved_question": obj.question,   # то, что реально лежит в БД
         }, status=status.HTTP_201_CREATED)
 
+
+
+class AskPageContentView(APIView):
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request):
+        obj = AskPageContent.objects.first()
+        if not obj:
+            return Response({"title": "", "content": ""})
+        lang = request.headers.get("Accept-Language", "ru")
+        data = obj.get_localized(lang)
+        return Response(AskPageContentSerializer(data).data)
 
 
 
