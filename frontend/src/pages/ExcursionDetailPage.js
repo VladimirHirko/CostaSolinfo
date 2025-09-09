@@ -10,6 +10,9 @@ import Breadcrumbs from "../components/Breadcrumbs";
 import RulesModal from "../components/RulesModal";
 import { fetchExcursionRules } from "../helpers/core";
 
+// ⬇️ NEW: хелперы для подписей дней/языков
+import { weekdayShort, langName } from "../utils/excursions";
+
 const ExcursionDetailPage = () => {
   const { id } = useParams();
   const { i18n, t } = useTranslation();
@@ -38,7 +41,7 @@ const ExcursionDetailPage = () => {
 
   // ===== Загрузка правил экскурсии по текущему языку =====
   useEffect(() => {
-    const lang = (i18n.language || "ru").toLowerCase().split("-")[0]; // 'ru-RU' -> 'ru'
+    const lang = (i18n.language || "ru").toLowerCase().split("-")[0];
     fetchExcursionRules(lang)
       .then((d) => {
         setRulesHtml(d?.content || "");
@@ -75,7 +78,7 @@ const ExcursionDetailPage = () => {
     };
   }, [id, i18n.language]);
 
-  // ===== Поиск отелей с debounce + отменой запроса =====
+  // ===== Поиск отелей =====
   useEffect(() => {
     if (hotelQuery.length < 2 || selectedHotel?.name === hotelQuery) {
       setHotelOptions([]);
@@ -90,7 +93,6 @@ const ExcursionDetailPage = () => {
         })
         .then((res) => setHotelOptions(res.data))
         .catch((err) => {
-          // игнорируем именно отменённые/прерванные запросы
           if (err.name !== "CanceledError" && err.name !== "AbortError") {
             setHotelOptions([]);
           }
@@ -112,8 +114,6 @@ const ExcursionDetailPage = () => {
     });
     setHotelQuery(hotel.name);
     setHotelOptions([]);
-
-    // убрать фокус с инпута (используем ref вместо getElementById)
     hotelInputRef.current?.blur();
 
     axios
@@ -141,39 +141,27 @@ const ExcursionDetailPage = () => {
       });
   };
 
-  // ===== Мягкий скролл к карте после прихода pickupInfo =====
+  // ===== Мягкий скролл к карте =====
   useEffect(() => {
     if (!pickupInfo) return;
-    const t = setTimeout(() => {
+    const tmo = setTimeout(() => {
       mapRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 400);
-    return () => clearTimeout(t);
+    return () => clearTimeout(tmo);
   }, [pickupInfo]);
 
-  // ===== Галерея: показать стрелки на 3 секунды, очистка таймера =====
+  // ===== Галерея =====
   const handleGalleryTap = () => {
     setShowArrows(true);
     if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     hideTimeoutRef.current = setTimeout(() => setShowArrows(false), 3000);
   };
+  useEffect(() => () => hideTimeoutRef.current && clearTimeout(hideTimeoutRef.current), []);
 
-  useEffect(() => {
-    return () => {
-      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-    };
-  }, []);
-
-  const openModal = (index) => {
-    setCurrentIndex(index);
-    setModalOpen(true);
-  };
+  const openModal = (index) => { setCurrentIndex(index); setModalOpen(true); };
   const closeModal = () => setModalOpen(false);
-  const prevImage = () => {
-    setCurrentIndex((prev) => (prev === 0 ? excursion.images.length - 1 : prev - 1));
-  };
-  const nextImage = () => {
-    setCurrentIndex((prev) => (prev === excursion.images.length - 1 ? 0 : prev + 1));
-  };
+  const prevImage = () => setCurrentIndex((prev) => (prev === 0 ? excursion.images.length - 1 : prev - 1));
+  const nextImage = () => setCurrentIndex((prev) => (prev === excursion.images.length - 1 ? 0 : prev + 1));
 
   if (!excursion) return <p>{t("loading")}</p>;
 
@@ -192,6 +180,29 @@ const ExcursionDetailPage = () => {
         <div className="excursion-detail-container">
           <h1>{excursion.localized_title}</h1>
 
+          {/* NEW: Информ-блоки — дни проведения и языки экскурсии */}
+          {Array.isArray(excursion.available_days) && excursion.available_days.length > 0 && (
+            <div className="x-card-row">
+              <span className="x-label">{t("exc.available_on")}:</span>
+              <div className="x-chips">
+                {excursion.available_days.map((d) => (
+                  <span key={d} className="x-chip x-chip--day">{weekdayShort(t, d)}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {Array.isArray(excursion.tour_languages) && excursion.tour_languages.length > 0 && (
+            <div className="x-card-row">
+              <span className="x-label">{t("exc.tour_languages")}:</span>
+              <div className="x-chips">
+                {excursion.tour_languages.map((code) => (
+                  <span key={code} className="x-chip x-chip--lang">{langName(t, code)}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Фотогалерея */}
           {excursion.images?.length > 0 && (
             <div
@@ -202,8 +213,7 @@ const ExcursionDetailPage = () => {
                 className="gallery-arrow left"
                 onClick={(e) => {
                   e.stopPropagation();
-                  document
-                    .querySelector(".excursion-gallery")
+                  document.querySelector(".excursion-gallery")
                     .scrollBy({ left: -300, behavior: "smooth" });
                 }}
               >
@@ -216,10 +226,7 @@ const ExcursionDetailPage = () => {
                     key={idx}
                     src={img}
                     alt={`Фото ${idx + 1}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openModal(idx);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); openModal(idx); }}
                   />
                 ))}
               </div>
@@ -228,8 +235,7 @@ const ExcursionDetailPage = () => {
                 className="gallery-arrow right"
                 onClick={(e) => {
                   e.stopPropagation();
-                  document
-                    .querySelector(".excursion-gallery")
+                  document.querySelector(".excursion-gallery")
                     .scrollBy({ left: 300, behavior: "smooth" });
                 }}
               >
@@ -240,49 +246,20 @@ const ExcursionDetailPage = () => {
 
           {modalOpen && (
             <div className="modal" onClick={closeModal}>
-              <span className="close-btn" onClick={closeModal}>
-                ×
-              </span>
-              <span
-                className="modal-arrow left"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  prevImage();
-                }}
-              >
-                ‹
-              </span>
+              <span className="close-btn" onClick={closeModal}>×</span>
+              <span className="modal-arrow left" onClick={(e) => { e.stopPropagation(); prevImage(); }}>‹</span>
               <img src={excursion.images[currentIndex]} alt={`Фото ${currentIndex + 1}`} />
-              <span
-                className="modal-arrow right"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  nextImage();
-                }}
-              >
-                ›
-              </span>
+              <span className="modal-arrow right" onClick={(e) => { e.stopPropagation(); nextImage(); }}>›</span>
             </div>
           )}
 
           {/* Основной контент */}
           <div className="excursion-content">
             {excursion.content_blocks?.map((block, idx) => {
-              const excursionTitle =
-                (excursion.localized_title || excursion.title || "").trim();
-
-              // Показываем заголовок блока только если:
-              // - он существует и не пустой
-              // - не равен заголовку экскурсии (чтобы не дублировать)
-              // - и блок не является "описанием" (если приходит тип)
+              const excursionTitle = (excursion.localized_title || excursion.title || "").trim();
               const blockTitle = (block.localized_title || "").trim();
-              const isDescription =
-                (block.block_type || block.type) === "description";
-
-              const showTitle =
-                blockTitle &&
-                blockTitle !== excursionTitle &&
-                !isDescription;
+              const isDescription = (block.block_type || block.type) === "description";
+              const showTitle = blockTitle && blockTitle !== excursionTitle && !isDescription;
 
               return (
                 <div key={idx} className="excursion-block">
@@ -299,8 +276,6 @@ const ExcursionDetailPage = () => {
             </button>
           </div>
           <RulesModal open={rulesOpen} onClose={() => setRulesOpen(false)} html={rulesHtml} title={rulesTitle} okLabel={t("rules.ok")} />
-
-
 
           {/* Блок выбора отеля */}
           <div className="hotel-select-block">
@@ -329,8 +304,8 @@ const ExcursionDetailPage = () => {
                       key={hotel.id}
                       onClick={() => {
                         handleSelectHotel(hotel);
-                        setHotelOptions([]); // очистить список
-                        hotelInputRef.current?.blur(); // убрать фокус
+                        setHotelOptions([]);
+                        hotelInputRef.current?.blur();
                       }}
                     >
                       {hotel.name}
@@ -344,7 +319,6 @@ const ExcursionDetailPage = () => {
           {/* Карта с точкой сбора */}
           {pickupInfo && (
             <div ref={mapRef} className="pickup-section">
-              {/* Время и цены */}
               <div className="pickup-details">
                 <p className="pickup-time">
                   ⏰ {t("excursion_pickup_time")}: <span>{pickupInfo.time}</span>
@@ -365,13 +339,9 @@ const ExcursionDetailPage = () => {
                 )}
               </div>
 
-              {/* Заголовок по центру */}
               <h3 className="pickup-title">{t("pickup_point")}</h3>
-
-              {/* Карта */}
               <PickupMap hotel={selectedHotel} pickupPoint={pickupInfo} />
 
-              {/* Кнопка Google Maps под картой слева */}
               {pickupInfo.lat && pickupInfo.lng && (
                 <div className="google-maps-button-container">
                   <a
@@ -387,18 +357,10 @@ const ExcursionDetailPage = () => {
             </div>
           )}
 
-          {/* Сообщение об ошибке */}
           {error && (
             <p style={{ color: "red", textAlign: "center", marginTop: "10px" }}>
               {error}
             </p>
-          )}
-
-          {/* Временно скрытая кнопка */}
-          {false && (
-            <button className="book-button" disabled={!selectedHotel || !pickupInfo}>
-              {t("show_info")}
-            </button>
           )}
         </div>
       </div>

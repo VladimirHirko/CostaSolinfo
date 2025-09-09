@@ -1,5 +1,6 @@
 /* src/styles/ExcursionsPage.css */
 
+/* Контейнер страницы */
 .excursions-container {
   max-width: 1200px;
   margin: 0 auto;
@@ -9,9 +10,11 @@
 /* Сетка карточек */
 .excursions-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); /* авто‑подбор колонок */
-  gap: clamp(14px, 2.8vw, 20px);
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  /* больше вертикальный зазор, чтобы тень не прилипала */
+  gap: 24px 18px;                 /* row-gap / column-gap */
   margin-top: clamp(14px, 3vw, 20px);
+  align-items: stretch;           /* тянем элементы по высоте трека */
 }
 
 /* Карточка экскурсии */
@@ -20,26 +23,43 @@
   border-radius: 12px;
   border: 1px solid rgba(0,0,0,0.06);
   box-shadow: 0 4px 8px rgba(0,0,0,0.08);
-  display: flex;
+  display: flex;                  /* колонка */
   flex-direction: column;
+  /* ВАЖНО: не фиксируем высоту, пусть растёт по контенту/высоте трека */
+  height: clamp(350px, 40vw, 360px);
+  min-height: 0;                  /* не даём контенту «выпирать» в гриде */
   text-align: left;
   padding: clamp(12px, 2.8vw, 16px);
-  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  transition: box-shadow .18s ease, border-color .18s ease, background-color .35s ease;
+  position: relative;             /* управляем слоем при наведении */
+  z-index: 0;
+  /* На всякий случай: запрещаем любые трансформации от других стилей */
+  transform: none !important;
+  overflow: hidden;
 }
 
-/* hover только там, где он есть */
+/* hover только на устройствах с курсором */
 @media (hover: hover) {
-  .excursion-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 10px 18px rgba(0,0,0,0.14);
-    border-color: rgba(0,0,0,0.12);
+  .excursion-card:hover,
+  .excursion-card:focus-within {
+    box-shadow: 0 10px 18px rgba(0,0,0,0.16);
+    border-color: rgba(0,0,0,0.16);
+    z-index: 1;                   /* тень поверх соседей, без сдвигов */
+    transform: none !important;   /* жёсткий запрет */
+    background-color: #f6fbff; /* нежно-голубой фон при ховере */
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .excursion-card,
+  .excursion-card::after { transition: none; }
+}
+
 
 /* Изображение */
 .excursion-thumb {
   width: 100%;
-  aspect-ratio: 16 / 9;              /* вместо фикс. 180px */
+  aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: 10px;
   border: 1px solid rgba(0,0,0,0.04);
@@ -51,9 +71,13 @@
   margin: 10px 0 6px;
   color: #222;
   line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;            /* максимум 2 строки */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-/* Короткое описание в карточке (обрезка до 3 строк) */
+/* Короткое описание (обрезаем до 3 строк) */
 .excursion-intro,
 .excursion-description {
   font-size: clamp(14px, 2vw, 15px);
@@ -66,34 +90,32 @@
   overflow: hidden;
 }
 
-/* Кнопка */
-.excursion-card a {
+/* Кнопка "Подробнее" — всегда внизу и слева */
+.read-more-btn {
   display: inline-block;
-  align-self: flex-start;            /* к левой кромке */
+  margin-top: auto;               /* прижим к низу карточки */
+  align-self: flex-start;         /* к левому краю */
   padding: 8px 14px;
-  background: #0057A3;               /* фирменный синий */
+  background: #0057A3;
   color: #fff;
   border-radius: 8px;
   text-decoration: none;
   font-size: 0.92rem;
+  font-weight: 600;
   transition: background .2s ease, transform .05s ease;
 }
-.excursion-card a:hover { background: #004a8b; }
-.excursion-card a:active { transform: translateY(1px); }
-.excursion-card a:focus-visible { outline: 2px solid #0057A3; outline-offset: 2px; }
+.read-more-btn:hover { background: #004a8b; }
+.read-more-btn:active { transform: translateY(1px); }
+.read-more-btn:focus-visible { outline: 2px solid #0057A3; outline-offset: 2px; }
 
-/* Подвал карточки (если используешь блок с ценой/днями) */
+/* Общие тексты внутри карточки (если будут) */
 .excursion-card p {
   font-size: clamp(13px, 1.8vw, 14px);
   color: #666;
   margin: 6px 0 10px;
 }
 
-/* Адаптивные уточнения */
-@media (max-width: 900px) {
-  /* сетка сама схлопнется в 2 колонки по minmax; ничего делать не надо */
-}
-
+/* Адаптив */
 @media (max-width: 600px) {
   .excursions-container { padding: 12px; }
   .excursion-card { border-radius: 10px; }
@@ -101,5 +123,38 @@
 
 /* Уважение настроек пользователя */
 @media (prefers-reduced-motion: reduce) {
-  .excursion-card, .excursion-card a { transition: none; }
+  .excursion-card, .read-more-btn { transition: none; }
+}
+
+/* --- Дополнительно: стили "чипсов" (если пригодятся) --- */
+.excursion-meta { margin: 12px 0 18px; }
+
+.x-card-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.x-label    { font-weight: 600; font-size: 0.95rem; color: #374151; min-width: max-content; }
+.x-chips    { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.x-chip {
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-size: 12px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.x-chip--day  { background: #e8f4ff; border-color: #cfe8ff; }
+.x-chip--lang { background: #eef8f2; border-color: #d8eadf; }
+
+
+/* Ссылка-обёртка вокруг карточки */
+.excursion-card-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  height: 100%;
+  cursor: pointer;
+}
+.excursion-card-link:focus-visible .excursion-card {
+  outline: 2px solid #0057A3;
+  outline-offset: 2px;
 }

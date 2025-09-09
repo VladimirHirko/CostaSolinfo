@@ -603,7 +603,7 @@ class ExcursionAdmin(admin.ModelAdmin):
     list_display = ('title', 'direction', 'duration', 'is_active')
     list_filter = ('direction',)
     search_fields = ('title',)
-    inlines = [ExcursionRegionPriceInline, ExcursionPickupInline, ExcursionImageInline, ExcursionHotelInline]  # 👈 Добавили регионы
+    inlines = [ExcursionRegionPriceInline, ExcursionPickupInline, ExcursionImageInline, ExcursionHotelInline]
 
     fieldsets = (
         (None, {
@@ -611,6 +611,11 @@ class ExcursionAdmin(admin.ModelAdmin):
         }),
         ('Фото и медиа', {
             'fields': ('image',)
+        }),
+        # ⬇️ УБРАЛИ monday..sunday, оставили только days
+        
+        ("Языки проведения", {
+            "fields": ("lang_en","lang_de","lang_es","lang_fr","lang_ru")
         }),
     )
 
@@ -1754,5 +1759,3 @@ def ensure_all_hotel_excursions(default_active=True):
     if to_create:
         HotelExcursion.objects.bulk_create(to_create, batch_size=2000)
     return len(to_create)
-
-

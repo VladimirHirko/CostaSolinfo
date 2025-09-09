@@ -29,8 +29,8 @@ const ExcursionsPage = () => {
   useEffect(() => {
     axios
       .get("/api/excursions/", { headers: { "Accept-Language": i18n.language } })
-      .then((res) => { setExcursions(res.data || []); })
-      .catch((err) => { console.error("Ошибка загрузки экскурсий:", err); })
+      .then((res) => setExcursions(res.data || []))
+      .catch((err) => console.error("Ошибка загрузки экскурсий:", err))
       .finally(() => setLoading(false));
   }, [i18n.language]);
 
@@ -62,23 +62,29 @@ const ExcursionsPage = () => {
                 : `http://127.0.0.1:8000${excursion.image}`;
             }
 
+            const title = excursion.localized_title || t("excursion");
             const introText = makeIntro(excursion.localized_description, 120);
 
             return (
-              <div key={excursion.id} className="excursion-card">
-                <img
-                  src={imageUrl}
-                  alt={excursion.localized_title || t("excursion")}
-                  className="excursion-thumb"
-                  onError={(e) => { e.currentTarget.src = defaultImage; }}
-                />
+              <Link
+                key={excursion.id}
+                to={`/excursion/${excursion.id}`}
+                className="excursion-card-link"
+                aria-label={title}
+              >
+                <article className="excursion-card">
+                  <img
+                    src={imageUrl}
+                    alt={title}
+                    className="excursion-thumb"
+                    onError={(e) => { e.currentTarget.src = defaultImage; }}
+                  />
 
-                <h2>{excursion.localized_title || t("excursion")}</h2>
+                  <h2>{title}</h2>
 
-                {introText && <p className="excursion-intro">{introText}</p>}
-
-                <Link to={`/excursion/${excursion.id}`}>{t("read_more")}</Link>
-              </div>
+                  {introText && <p className="excursion-intro">{introText}</p>}
+                </article>
+              </Link>
             );
           })}
         </div>

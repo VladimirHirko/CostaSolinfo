@@ -18,7 +18,7 @@ class ExcursionAdminForm(forms.ModelForm):
         choices=DAYS_OF_WEEK,
         widget=forms.CheckboxSelectMultiple,
         label="Дни недели",
-        required=True
+        required=False  # ⬅️ позволяем временно не выбирать дни
     )
 
     class Meta:
@@ -27,11 +27,26 @@ class ExcursionAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if self.instance and self.instance.days:
-            self.initial['days'] = self.instance.days
+        value = getattr(self.instance, "days", None)
+        initial = []
+        if isinstance(value, (list, tuple)):
+            initial = list(value)
+        elif isinstance(value, str) and value.strip():
+            # если вдруг хранится строка "mon,wed"
+            initial = [v.strip() for v in value.split(",") if v.strip()]
+        self.fields["days"].initial = initial
 
     def clean_days(self):
-        return self.cleaned_data['days']  # сохранится как список
+        """
+        Возвращаем список кодов дней в правильном порядке (mon..sun).
+        """
+        selected = self.cleaned_data.get('days') or []
+        allowed = {'mon','tue','wed','thu','fri','sat','sun'}
+        selected = [d for d in selected if d in allowed]
+
+        order = ['mon','tue','wed','thu','fri','sat','sun']
+        selected_sorted = [d for d in order if d in selected]
+        return selected_sorted  # сохранится как список (JSONField/ArrayField)
 
 # Форма для указания времени на трансферы
 class BulkTransferScheduleForm(forms.Form):

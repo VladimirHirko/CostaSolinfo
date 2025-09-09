@@ -588,6 +588,33 @@ class Excursion(models.Model):
     days = models.JSONField(verbose_name="Дни недели", help_text="Список дней: mon, tue и т.д.")
     is_active = models.BooleanField(default=True, verbose_name="Активна")
 
+    # ЯЗЫКИ ПРОВЕДЕНИЯ (фиксированный набор чекбоксов)
+    lang_en = models.BooleanField(_("Английский"), default=False)
+    lang_de = models.BooleanField(_("Немецкий"), default=False)
+    lang_es = models.BooleanField(_("Испанский"), default=False)
+    lang_fr = models.BooleanField(_("Французский"), default=False)
+    lang_ru = models.BooleanField(_("Русский"),  default=False)
+
+    # Вспомогательное свойство для API/фронта
+    @property
+    def tour_languages_codes(self):
+        codes = []
+        if self.lang_en: codes.append("en")
+        if self.lang_de: codes.append("de")
+        if self.lang_es: codes.append("es")
+        if self.lang_fr: codes.append("fr")
+        if self.lang_ru: codes.append("ru")
+        return codes
+
+    @property
+    def available_days_list(self):
+        # Преобразуем булевы Monday..Sunday в индексы [0..6]
+        mapping = [
+            ("monday", 0), ("tuesday", 1), ("wednesday", 2),
+            ("thursday", 3), ("friday", 4), ("saturday", 5), ("sunday", 6),
+        ]
+        return [idx for attr, idx in mapping if getattr(self, attr, False)]
+    
     def __str__(self):
         return self.title
 
@@ -887,4 +914,3 @@ class TeamMember(models.Model):
 
     def __str__(self):
         return self.name
-

@@ -349,3 +349,10 @@
 @media (prefers-reduced-motion: reduce) {
   .modal-backdrop, .modal-card { transition: none !important; }
 }
+
+.info-box { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; margin: 14px 0; }
+.info-title { font-weight: 700; margin-bottom: 6px; }
+.info-list { margin: 0; padding-left: 18px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid #e2e8f0; border-radius: 9999px; padding: 2px 10px; font-size: .9rem; }
+

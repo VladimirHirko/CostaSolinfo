@@ -6,7 +6,7 @@ from core.models import (
     Question, ContactInfo, AboutUs, TransferSchedule,
     Hotel, PickupPoint, TransferNotification, TransferInquiry,
     PrivacyPolicy, InfoMeetingScheduleItem, ExcursionContentBlock,
-    PageBanner, ExcursionImage, Question, TeamMember, TransferPageContentBlock,
+    PageBanner, ExcursionImage, TeamMember, TransferPageContentBlock,
     ExcursionRules
     )
 from django.utils.translation import gettext_lazy as _
@@ -67,9 +67,20 @@ class ExcursionContentBlockSerializer(serializers.ModelSerializer):
         ]
 
 
+DAY_CODE_TO_INDEX = {
+    "mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6,
+    # на всякий случай — поддержка полных англ. названий
+    "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3, "friday": 4, "saturday": 5, "sunday": 6,
+    # и русских, если вдруг попадут в БД
+    "понедельник": 0, "вторник": 1, "среда": 2, "четверг": 3, "пятница": 4, "суббота": 5, "воскресенье": 6,
+    "пн":0,"вт":1,"ср":2,"чт":3,"пт":4,"сб":5,"вс":6,
+}
+
 class ExcursionSerializer(serializers.ModelSerializer):
     localized_title = serializers.SerializerMethodField()
     localized_description = serializers.SerializerMethodField()
+    available_days = serializers.SerializerMethodField()   # [0..6]
+    tour_languages = serializers.SerializerMethodField()   # ["en","de",...]
 
     class Meta:
         model = Excursion
@@ -77,27 +88,69 @@ class ExcursionSerializer(serializers.ModelSerializer):
             'id',
             'duration',
             'direction',
-            'days',
+            'days',                  # как хранится в БД (список кодов)
             'image',
             'localized_title',
             'localized_description',
+            'available_days',        # нормализованный массив индексов для фронта
+            'tour_languages',
         ]
 
+    # ===== локализация =====
     def get_localized_title(self, obj):
         request = self.context.get('request')
         lang = getattr(request, 'LANGUAGE_CODE', 'ru')
         block = obj.content_blocks.filter(block_type='description').first()
         if block:
-            return getattr(block, f"title_{lang}", None) or obj.title
-        return obj.title
+            return getattr(block, f"title_{lang}", None) or getattr(obj, "title", "")
+        return getattr(obj, "title", "")
 
     def get_localized_description(self, obj):
         request = self.context.get('request')
         lang = getattr(request, 'LANGUAGE_CODE', 'ru')
         block = obj.content_blocks.filter(block_type='description').first()
         if block:
-            return getattr(block, f"content_{lang}", None) or block.content or ""
+            return getattr(block, f"content_{lang}", None) or (block.content or "")
         return ""
+
+    # ===== дни недели → [0..6] =====
+    def get_available_days(self, obj):
+        v = getattr(obj, "days", None)
+
+        # список кодов: ["mon","wed"]
+        if isinstance(v, (list, tuple)):
+            out = []
+            for token in v:
+                key = str(token).strip().lower()
+                if key in DAY_CODE_TO_INDEX:
+                    out.append(DAY_CODE_TO_INDEX[key])
+            return sorted({*out})
+
+        # строка: "mon,wed"
+        if isinstance(v, str) and v.strip():
+            out = []
+            for token in v.replace(";", ",").split(","):
+                key = token.strip().lower()
+                if key.isdigit():
+                    num = int(key)
+                    if 0 <= num <= 6:
+                        out.append(num)
+                elif key in DAY_CODE_TO_INDEX:
+                    out.append(DAY_CODE_TO_INDEX[key])
+            return sorted({*out})
+
+        # ничего нет
+        return []
+
+    # ===== языки экскурсии → ["en","de",...] =====
+    def get_tour_languages(self, obj):
+        langs = []
+        if getattr(obj, "lang_en", False): langs.append("en")
+        if getattr(obj, "lang_de", False): langs.append("de")
+        if getattr(obj, "lang_es", False): langs.append("es")
+        if getattr(obj, "lang_fr", False): langs.append("fr")
+        if getattr(obj, "lang_ru", False): langs.append("ru")
+        return langs
 
 
 class ExcursionImageSerializer(serializers.ModelSerializer):
@@ -105,60 +158,43 @@ class ExcursionImageSerializer(serializers.ModelSerializer):
         model = ExcursionImage
         fields = ['id', 'image', 'alt_text']
 
-class ExcursionDetailSerializer(serializers.ModelSerializer):
-    images = ExcursionImageSerializer(many=True, read_only=True)
-    localized_title = serializers.SerializerMethodField()
-    localized_description = serializers.SerializerMethodField()
+class ExcursionDetailSerializer(ExcursionSerializer):
     images = serializers.SerializerMethodField()
     content_blocks = serializers.SerializerMethodField()
 
-    class Meta:
-        model = Excursion
-        fields = '__all__'
+    class Meta(ExcursionSerializer.Meta):
+        # всё из списка + детальные поля
+        fields = ExcursionSerializer.Meta.fields + [
+            'images',
+            'content_blocks',
+        ]
 
-    def get_language(self):
-        request = self.context.get("request")
-        if request:
-            return getattr(request, "LANGUAGE_CODE", "ru")
-        return "ru"
-
-    def get_localized_title(self, obj):
-        lang = self.get_language()
-        block = obj.content_blocks.filter(block_type="description").first()
-        if block:
-            return getattr(block, f"title_{lang}", None) or obj.title
-        return obj.title
-
-    def get_localized_description(self, obj):
-        lang = self.get_language()
-        block = obj.content_blocks.filter(block_type="description").first()
-        if block:
-            return getattr(block, f"content_{lang}", None) or block.content or ""
-        return ""
+    def _lang(self):
+        req = self.context.get("request")
+        return getattr(req, "LANGUAGE_CODE", "ru")
 
     def get_images(self, obj):
-        request = self.context.get("request")
-        return [
-            request.build_absolute_uri(img.image.url) 
-            for img in obj.images.all()
-        ]
+        req = self.context.get("request")
+        out = []
+        for im in obj.images.all().order_by('id'):
+            url = getattr(im.image, "url", "")
+            if not url:
+                continue
+            if req and not url.startswith("http"):
+                url = req.build_absolute_uri(url)
+            out.append(url)
+        return out
 
     def get_content_blocks(self, obj):
-        lang = self.get_language()
-        return [
-            {
-                "type": block.block_type,
-                "localized_title": getattr(block, f"title_{lang}", block.title),
-                "localized_content": getattr(block, f"content_{lang}", block.content or "")
-            }
-            for block in obj.content_blocks.all()
-        ]
-
-
-
-
-
-
+        lang = self._lang()
+        blocks = []
+        for b in obj.content_blocks.all().order_by('order', 'id'):
+            blocks.append({
+                "block_type": b.block_type,  # фронт читает block.block_type || block.type
+                "localized_title": getattr(b, f"title_{lang}", None) or (b.title or ""),
+                "localized_content": getattr(b, f"content_{lang}", None) or (b.content or ""),
+            })
+        return blocks
 
 
 
