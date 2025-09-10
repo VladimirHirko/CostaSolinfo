@@ -204,6 +204,21 @@ CKEDITOR_CONFIGS = {
         "allowedContent": True,
         "height": 300,
     },
+    "excursion_long": {
+        "toolbar": [
+            {"name": "basicstyles", "items": ["Bold","Italic","Underline","RemoveFormat"]},
+            {"name": "paragraph",   "items": ["NumberedList","BulletedList","Outdent","Indent"]},
+            {"name": "links",       "items": ["Link","Unlink"]},
+            {"name": "insert",      "items": ["Image","Table"]},   # для uploader
+            {"name": "styles",      "items": ["Format","Blockquote"]},
+            {"name": "clipboard",   "items": ["Undo","Redo"]},
+        ],
+        "format_tags": "p;h3;h4",
+        "height": 260,
+        "width": "100%",
+        "allowedContent": True,
+    },
+    
 }
 
 

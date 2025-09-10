@@ -23,7 +23,7 @@ from .models import (
     ExcursionPickupPoint, ExcursionRegionPrice, ExcursionContentBlock, 
     ExcursionPickupReference, ExcursionImage, Question, TeamMember,
     TransferPageContentBlock, TransferPassenger, HotelExcursion, ExcursionZone,
-    ExcursionRules, AskPageContent
+    ExcursionRules, AskPageContent, ExcursionLongDetail
 )
 from leaflet.admin import LeafletGeoAdmin
 from leaflet.forms.widgets import LeafletWidget
@@ -622,7 +622,32 @@ class ExcursionAdmin(admin.ModelAdmin):
     class Media:
         js = ("admin/js/excursion_pickup_autofill.js",)
 
+# Админка подробного описания экскурсии
+class ExcursionLongDetailAdminForm(forms.ModelForm):
+    # перечисли какие поля надо сделать форматируемыми
+    text_ru = forms.CharField(label="Long description (RU)", widget=CKEditorWidget(config_name="excursion_long"), required=False)
+    text_en = forms.CharField(label="Long description (EN)", widget=CKEditorWidget(config_name="excursion_long"), required=False)
+    text_es = forms.CharField(label="Long description (ES)", widget=CKEditorWidget(config_name="excursion_long"), required=False)
+    text_lt = forms.CharField(label="Long description (LT)", widget=CKEditorWidget(config_name="excursion_long"), required=False)
+    text_lv = forms.CharField(label="Long description (LV)", widget=CKEditorWidget(config_name="excursion_long"), required=False)
+    text_et = forms.CharField(label="Long description (ET)", widget=CKEditorWidget(config_name="excursion_long"), required=False)
+    text_uk = forms.CharField(label="Long description (UK)", widget=CKEditorWidget(config_name="excursion_long"), required=False)
 
+    class Meta:
+        model = ExcursionLongDetail
+        fields = "__all__"
+
+@admin.register(ExcursionLongDetail)
+class ExcursionLongDetailAdmin(admin.ModelAdmin):
+    form = ExcursionLongDetailAdminForm
+    list_display = ("id", "excursion", "updated_at")
+    search_fields = ("excursion__title_ru", "excursion__title_en", "excursion__title_es")
+    autocomplete_fields = ("excursion",)
+    fieldsets = (
+        (None, {"fields": ("excursion",)}),
+        ("Long description", {"fields": ("text_ru","text_en","text_es","text_lt","text_lv","text_et","text_uk")}),
+        # если позже вернёшь «включено/не включено», просто добавь сюда их поля
+    )
 
 # Админка выставления времени и даты на трансферы
 class CustomAdminSite(admin.AdminSite):

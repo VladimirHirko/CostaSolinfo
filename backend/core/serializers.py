@@ -7,7 +7,7 @@ from core.models import (
     Hotel, PickupPoint, TransferNotification, TransferInquiry,
     PrivacyPolicy, InfoMeetingScheduleItem, ExcursionContentBlock,
     PageBanner, ExcursionImage, TeamMember, TransferPageContentBlock,
-    ExcursionRules
+    ExcursionRules, ExcursionLongDetail
     )
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -75,6 +75,37 @@ DAY_CODE_TO_INDEX = {
     "понедельник": 0, "вторник": 1, "среда": 2, "четверг": 3, "пятница": 4, "суббота": 5, "воскресенье": 6,
     "пн":0,"вт":1,"ср":2,"чт":3,"пт":4,"сб":5,"вс":6,
 }
+
+# Сериализатор подробного описания экскурсий
+LANG_FIELDS = {
+    'ru': 'text_ru',
+    'en': 'text_en',
+    'es': 'text_es',
+    'lt': 'text_lt',
+    'lv': 'text_lv',
+    'et': 'text_et',
+    'uk': 'text_uk',
+}
+
+class ExcursionLongDetailSerializer(serializers.ModelSerializer):
+    text = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ExcursionLongDetail
+        fields = ("excursion", "text", "updated_at")
+
+    def get_text(self, obj):
+        lang = (self.context.get("lang") or "en").lower()
+        # фолбэк: текущий → en → ru
+        for l in (lang, "en", "ru"):
+            field = LANG_FIELDS.get(l)
+            if not field:
+                continue
+            val = getattr(obj, field, "") or ""
+            if val.strip():
+                return val
+        return ""
+        
 
 class ExcursionSerializer(serializers.ModelSerializer):
     localized_title = serializers.SerializerMethodField()

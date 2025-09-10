@@ -72,8 +72,9 @@ function ContactsPage() {
       <PageBanner page="contacts" />
 
       <div className="page-container">
-        <h2 className="text-center mb-3">{t('contacts_title')}</h2>
-        <p className="welcome-text text-center">{t('contacts_intro')}</p>
+        <p className="welcome-text text-center" style={{ textAlign: 'center', fontSize: '1.3em'}}>
+          {t('contacts_intro')}
+        </p>
 
         {/* Кликовые карточки */}
         <div className="contacts-grid contacts-grid-compact">

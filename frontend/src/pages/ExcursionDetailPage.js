@@ -34,6 +34,12 @@ const ExcursionDetailPage = () => {
   const hideTimeoutRef = useRef(null);
   const hotelInputRef = useRef(null);
 
+  // NEW: модалка «Подробнее»
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsHtml, setDetailsHtml] = useState("");
+  const [detailsTitle, setDetailsTitle] = useState(t("exc.details_title", { defaultValue: t("exc.details") }));
+
+
   // Модалка правил поведения на экскурсиях
   const [rulesOpen, setRulesOpen] = useState(false);
   const [rulesHtml, setRulesHtml] = useState("");
@@ -41,7 +47,7 @@ const ExcursionDetailPage = () => {
 
   // ===== Загрузка правил экскурсии по текущему языку =====
   useEffect(() => {
-    const lang = (i18n.language || "ru").toLowerCase().split("-")[0];
+    const lang = (i18n.language || "en").toLowerCase().split("-")[0];
     fetchExcursionRules(lang)
       .then((d) => {
         setRulesHtml(d?.content || "");
@@ -52,6 +58,31 @@ const ExcursionDetailPage = () => {
         setRulesHtml("");
       });
   }, [i18n.language, t]);
+
+  // NEW: загрузка длинного описания из Core → Excursion long details
+  useEffect(() => {
+    if (!detailsOpen) return;
+    const lang = (i18n.language || "en").toLowerCase().split("-")[0];
+
+    // сразу показываем состояние загрузки
+    setDetailsHtml(`<p>${t("common.loading", { defaultValue: "Загрузка…" })}</p>`);
+
+    axios
+      .get(`/api/excursions/${id}/long-detail/?lang=${lang}`)
+      .then((res) => {
+        const data = res.data || {};
+        const text = (data.text || "").trim();
+        setDetailsHtml(
+          text || `<p>${t("exc.details_empty", { defaultValue: "Скоро добавим подробное описание для этой экскурсии." })}</p>`
+        );
+        const baseTitle = (excursion?.localized_title || excursion?.title || "").trim();
+        setDetailsTitle(`${baseTitle ? baseTitle + ": " : ""}${t("exc.details", { defaultValue: "Подробности" })}`);
+      })
+      .catch(() => {
+        setDetailsHtml(`<p style="color:#b00020">${t("common.error", { defaultValue: "Ошибка" })}</p>`);
+      });
+  }, [detailsOpen, id, i18n.language, excursion, t]);
+
 
   // ===== Смена экскурсии — сбросить все выборы/состояния =====
   useEffect(() => {
@@ -270,12 +301,38 @@ const ExcursionDetailPage = () => {
             })}
           </div>
 
-          <div style={{ margin: "16px 0 24px" }}>
-            <button className="btn-primary rules-btn" onClick={() => setRulesOpen(true)} disabled={!rulesHtml}>
-              📝 {t("rules.button")}
+
+
+          <div style={{ margin: "16px 0 24px", display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {/* Кнопка: Подробнее */}
+            <button
+              className="transfer-button"
+              onClick={() => setDetailsOpen(true)}
+              title={t("exc.details_hint", { defaultValue: "Развернутое описание, маршрут, что включено" })}
+            >
+              {t("exc.details_button", { defaultValue: "Подробнее" })}
+            </button>
+
+            {/* Кнопка: Правила */}
+            <button className="transfer-button" onClick={() => setRulesOpen(true)} disabled={!rulesHtml}>
+              {t("rules.button")}
             </button>
           </div>
-          <RulesModal open={rulesOpen} onClose={() => setRulesOpen(false)} html={rulesHtml} title={rulesTitle} okLabel={t("rules.ok")} />
+          {/* NEW: модалка «Подробнее» */}
+          <RulesModal
+            open={detailsOpen}
+            onClose={() => setDetailsOpen(false)}
+            html={detailsHtml}
+            title={detailsTitle}
+            okLabel={t("close")}
+          />
+          {/* NEW: модалка «Правила» */}
+          <RulesModal 
+            open={rulesOpen} 
+            onClose={() => setRulesOpen(false)} 
+            html={rulesHtml} title={rulesTitle} 
+            okLabel={t("rules.ok")} 
+          />
 
           {/* Блок выбора отеля */}
           <div className="hotel-select-block">

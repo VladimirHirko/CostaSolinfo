@@ -12,8 +12,8 @@ import translationUK from './locales/uk/translation.json';
 import translationES from './locales/es/translation.json';
 
 const resources = {
-  ru: { translation: translationRU },
   en: { translation: translationEN },
+  ru: { translation: translationRU },
   lt: { translation: translationLT },
   lv: { translation: translationLV },
   et: { translation: translationET },
@@ -21,15 +21,30 @@ const resources = {
   es: { translation: translationES },
 };
 
+const SUPPORTED = ['en', 'ru', 'lt', 'lv', 'et', 'uk', 'es'];
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: 'ru', // язык по умолчанию
-    interpolation: {
-      escapeValue: false,
+    fallbackLng: 'en',                 // если языка нет — откатываемся на EN
+    supportedLngs: SUPPORTED,          // допустимые короткие коды
+    load: 'languageOnly',              // 'lt-LT' -> 'lt'
+    nonExplicitSupportedLngs: true,    // принимать 'xx-YY' как 'xx'
+    detection: {
+      // приоритет: ?lang=xx -> localStorage -> язык браузера -> атрибут <html lang="">
+      order: ['querystring', 'localStorage', 'navigator', 'htmlTag'],
+      lookupQuerystring: 'lang',
+      caches: ['localStorage'],
     },
+    interpolation: { escapeValue: false },
+    returnEmptyString: false,
   });
+
+// обновляем <html lang="..."> при смене языка
+i18n.on('languageChanged', (lng) => {
+  document.documentElement.lang = (lng || 'en');
+});
 
 export default i18n;

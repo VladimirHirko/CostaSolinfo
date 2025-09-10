@@ -16,7 +16,7 @@ from core.models import (
     TransferInquiry, TransferScheduleItem, TransferScheduleGroup,
     PrivacyPolicy, InfoMeetingScheduleItem, ExcursionRegionPrice,
     PageBanner, ExcursionPickupPoint, Question, TeamMember, TransferPageContentBlock,
-    ExcursionRules, AskPageContent
+    ExcursionRules, AskPageContent,ExcursionLongDetail
     )
 from core.utils import send_html_email, send_question_notification
 from .serializers import (
@@ -26,7 +26,8 @@ from .serializers import (
     HotelSerializer, SimpleHotelSerializer, TransferNotificationCreateSerializer,
     TransferInquirySerializer, PrivacyPolicySerializer, InfoMeetingScheduleItemSerializer,
     PageBannerSerializer, ExcursionDetailSerializer, QuestionSerializer, TeamMemberSerializer,
-    TransferPageContentBlockSerializer, ExcursionRulesSerializer, AskPageContentSerializer
+    TransferPageContentBlockSerializer, ExcursionRulesSerializer, AskPageContentSerializer,
+    ExcursionLongDetailSerializer
     )
 from django.core.mail import send_mail, EmailMultiAlternatives
 from django.contrib import admin
@@ -756,6 +757,24 @@ class ExcursionListView(ListAPIView):
         context = super().get_serializer_context()
         context['request'] = self.request
         return context
+
+# Вьюха подробного описания экскурсий
+class ExcursionLongDetailView(APIView):
+    def get(self, request, pk):
+        lang = (request.query_params.get("lang") or "en").lower()
+
+        try:
+            Excursion.objects.only("id").get(pk=pk)
+        except Excursion.DoesNotExist:
+            return Response({"detail": "Excursion not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        detail = ExcursionLongDetail.objects.filter(excursion_id=pk).first()
+        if not detail:
+            return Response({"excursion": pk, "text": "", "updated_at": None}, status=status.HTTP_200_OK)
+
+        ser = ExcursionLongDetailSerializer(detail, context={"lang": lang})
+        return Response(ser.data, status=status.HTTP_200_OK)
+
 
 
 class ExcursionDetailView(RetrieveAPIView):

@@ -23,11 +23,9 @@ function AboutUsPage() {
       <PageBanner page="about" />
 
       <div className="page-container">
-        <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>
-          {t('about')}
-        </h2>
+        
 
-        <p className="welcome-text" style={{ textAlign: 'center' }}>
+        <p className="welcome-text" style={{ textAlign: 'center', fontSize: '1.3em'}}>
           {t('about_intro')}
         </p>
 

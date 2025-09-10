@@ -847,7 +847,32 @@ class ExcursionContentBlock(models.Model):
         verbose_name_plural = "Блоки контента экскурсий"
         ordering = ['order']
 
+# Модель полного описани экскурсий
+class ExcursionLongDetail(models.Model):
+    excursion = models.OneToOneField(
+        Excursion,
+        on_delete=models.CASCADE,
+        related_name='long_detail',
+        verbose_name=_("Excursion"),
+    )
 
+    # Длинные тексты по языкам
+    text_ru = models.TextField(_("Long description (RU)"), blank=True, default="")
+    text_en = models.TextField(_("Long description (EN)"), blank=True, default="")
+    text_es = models.TextField(_("Long description (ES)"), blank=True, default="")
+    text_lt = models.TextField(_("Long description (LT)"), blank=True, default="")
+    text_lv = models.TextField(_("Long description (LV)"), blank=True, default="")
+    text_et = models.TextField(_("Long description (ET)"), blank=True, default="")
+    text_uk = models.TextField(_("Long description (UK)"), blank=True, default="")
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Excursion long detail")
+        verbose_name_plural = _("Excursion long details")
+
+    def __str__(self):
+        return f"{self.excursion} — long detail"
 
 
 # Модель правил на экскурсиях
