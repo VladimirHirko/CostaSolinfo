@@ -1,22 +1,31 @@
 .
+├── .DS_Store
 ├── .gitignore
 ├── Docs
+│   ├── CODE_SNAPSHOT_2025-09-03.md
 │   ├── CostaDelSol_BusinessPlan.docx
 │   ├── CostaSolinfo_tree_2025-09-03.txt
+│   ├── PROJECT_TREE_2025-09-03.txt
 │   └── Project_CostaSolinfo.pages
+├── PROJECT_TREE_2025-09-13.txt
 ├── README.md
 ├── backend
+│   ├── .DS_Store
 │   ├── audit_zones.csv
 │   ├── core
+│   │   ├── .DS_Store
 │   │   ├── __init__.py
 │   │   ├── admin.py
 │   │   ├── apps.py
 │   │   ├── forms.py
 │   │   ├── management
+│   │   │   ├── .DS_Store
 │   │   │   └── commands
+│   │   │       ├── .DS_Store
 │   │   │       ├── audit_excursion_zones.py
 │   │   │       └── cleanup_excursion_pickups.py
 │   │   ├── migrations
+│   │   │   ├── .DS_Store
 │   │   │   ├── 0001_initial.py
 │   │   │   ├── 0002_excursion.py
 │   │   │   ├── 0003_pickuppoint.py
@@ -89,12 +98,21 @@
 │   │   │   ├── 0070_alter_excursionpickuppoint_hotel_hotelexcursion.py
 │   │   │   ├── 0071_excursionzone_hotel_excursion_zone.py
 │   │   │   ├── 0072_alter_excursionpickuppoint_unique_together_and_more.py
+│   │   │   ├── 0073_excursionrules_alter_excursionpickuppoint_options_and_more.py
+│   │   │   ├── 0074_askpagecontent.py
+│   │   │   ├── 0075_language_excursion_guide_languages.py
+│   │   │   ├── 0076_remove_excursion_guide_languages_delete_language.py
+│   │   │   ├── 0077_excursion_lang_de_excursion_lang_en_and_more.py
+│   │   │   ├── 0078_excursiondetail.py
+│   │   │   ├── 0079_excursionlongdetail_delete_excursiondetail.py
 │   │   │   └── __init__.py
 │   │   ├── models.py
 │   │   ├── serializers.py
 │   │   ├── signals.py
 │   │   ├── static
+│   │   │   ├── .DS_Store
 │   │   │   ├── admin
+│   │   │   │   ├── .DS_Store
 │   │   │   │   └── js
 │   │   │   │       ├── auto_price_by_region.js
 │   │   │   │       ├── leaflet_admin_pickup.js
@@ -102,9 +120,12 @@
 │   │   │   └── css
 │   │   │       └── admin_custom.css
 │   │   ├── templates
+│   │   │   ├── .DS_Store
 │   │   │   ├── admin
+│   │   │   │   ├── .DS_Store
 │   │   │   │   ├── bulk_transfer_schedule.html
 │   │   │   │   └── core
+│   │   │   │       ├── .DS_Store
 │   │   │   │       ├── custom_index.html
 │   │   │   │       ├── excursionpickuppoint
 │   │   │   │       │   └── change_list.html
@@ -117,6 +138,7 @@
 │   │   │   ├── confirmation_error.html
 │   │   │   ├── confirmation_success.html
 │   │   │   └── emails
+│   │   │       ├── .DS_Store
 │   │   │       ├── answer_notification.html
 │   │   │       ├── answer_notification.txt
 │   │   │       ├── question_notification.html
@@ -149,30 +171,34 @@
 │   │   ├── utils.py
 │   │   └── views.py
 │   ├── costasolinfo
+│   │   ├── .DS_Store
 │   │   ├── __init__.py
 │   │   ├── asgi.py
 │   │   ├── settings.py
 │   │   ├── urls.py
 │   │   └── wsgi.py
-│   ├── db.sqlite3
-│   ├── db_backup.sqlite3
 │   ├── excursions_template_compact.xlsx
 │   ├── manage.py
 │   ├── requirements.txt
 │   ├── static
+│   │   ├── .DS_Store
 │   │   └── images
 │   │       └── logo_CostaSolinfo.PNG
 │   └── templates
+│       ├── .DS_Store
 │       └── admin
 │           └── base_site.html
 ├── frontend
+│   ├── .DS_Store
 │   ├── .gitignore
 │   ├── README.md
 │   ├── package-lock.json
 │   ├── package.json
 │   ├── public
+│   │   ├── .DS_Store
 │   │   ├── favicon.ico
 │   │   ├── images
+│   │   │   ├── .DS_Store
 │   │   │   └── default_excursion.jpg
 │   │   ├── index.html
 │   │   ├── logo192.png
@@ -180,17 +206,24 @@
 │   │   ├── manifest.json
 │   │   └── robots.txt
 │   ├── src
+│   │   ├── .DS_Store
 │   │   ├── App.css
 │   │   ├── App.js
+│   │   ├── api
+│   │   │   ├── excursions.js
+│   │   │   └── http.js
 │   │   ├── assets
+│   │   │   ├── .DS_Store
 │   │   │   ├── css
 │   │   │   │   └── admin_custom.css
 │   │   │   └── logo_CostaSolinfo.PNG
 │   │   ├── components
+│   │   │   ├── .DS_Store
 │   │   │   ├── Breadcrumbs.jsx
 │   │   │   ├── Button.js
 │   │   │   ├── CookieBanner.css
 │   │   │   ├── CookieBanner.js
+│   │   │   ├── ExcursionDetailsModal.jsx
 │   │   │   ├── Footer.js
 │   │   │   ├── MapComponent.js
 │   │   │   ├── Navbar.js
@@ -198,10 +231,12 @@
 │   │   │   ├── PageBanner.js
 │   │   │   ├── PickupMap.js
 │   │   │   ├── PrivacyPolicyModal.js
+│   │   │   ├── RulesModal.jsx
 │   │   │   ├── ScrollToTopButton.js
 │   │   │   ├── TransferContent.js
 │   │   │   └── TransferMap.js
 │   │   ├── helpers
+│   │   │   ├── core.js
 │   │   │   └── normalizeText.js
 │   │   ├── hooks
 │   │   │   └── usePageContent.js
@@ -209,6 +244,7 @@
 │   │   ├── index.css
 │   │   ├── index.js
 │   │   ├── locales
+│   │   │   ├── .DS_Store
 │   │   │   ├── en
 │   │   │   │   └── translation.json
 │   │   │   ├── es
@@ -224,6 +260,7 @@
 │   │   │   └── uk
 │   │   │       └── translation.json
 │   │   ├── pages
+│   │   │   ├── .DS_Store
 │   │   │   ├── AboutUsPage.js
 │   │   │   ├── AirportTransferChoicePage.js
 │   │   │   ├── AirportTransferGroupPage.js
@@ -237,6 +274,7 @@
 │   │   │   ├── HomePage.js
 │   │   │   └── InfoMeetingPage.js
 │   │   ├── styles
+│   │   │   ├── .DS_Store
 │   │   │   ├── ExcursionDetailPage.css
 │   │   │   ├── ExcursionPage.css
 │   │   │   ├── ExcursionsPage.css
@@ -249,9 +287,11 @@
 │   │   │   ├── main.css
 │   │   │   └── navbar.css
 │   │   └── utils
-│   │       └── cookies.js
+│   │       ├── cookies.js
+│   │       └── excursions.js
 │   └── vite.config.js
 └── tools
+    ├── make_snapshot.sh
     └── make_tree.sh
 
-44 directories, 211 files
+45 directories, 250 files
